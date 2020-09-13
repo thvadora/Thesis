@@ -1,4 +1,6 @@
 *.pyc
 *.tsv
+*.csv
 bin/
 data/
+code/Oracle/lxmert/data
