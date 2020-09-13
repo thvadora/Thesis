@@ -54,10 +54,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
     parser.add_argument("-config", type=str, default="config/Oracle/config_small.json", help='Config file')
-    parser.add_argument("-img_feat", type=str, default="vgg", help='Select "vgg" or "res" as image features')
+    parser.add_argument("-img_feat", type=str, default="res", help='Select "vgg" or "res" as image features')
     parser.add_argument("-exp_name", type=str, help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
-    parser.add_argument("--preloaded", type=bool, default=True)
+    parser.add_argument("--preloaded", type=bool, default=False)
     parser.add_argument("-load_bin_path", type=str)
 
     args = parser.parse_args()
@@ -198,6 +198,8 @@ if __name__ == '__main__':
                'N/A': 2}
 
     tok2ans = {v: k for k, v in ans2tok.items()}
+
+    print('Everything OK, now lets predict!')
 
     pos = 0
     last_game_id = None
