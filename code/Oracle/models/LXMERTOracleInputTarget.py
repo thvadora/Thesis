@@ -86,6 +86,7 @@ class LXMERTOracleInputTarget(nn.Module):
 
     def forward(self, questions, obj_categories, spatials, crop_features, visual_features, lengths,
                 history_raw, fasterrcnn_features, fasterrcnn_boxes, target_bbox):
+        #print(len(history_raw), len(fasterrcnn_features), len(fasterrcnn_boxes))
         # bs = questions.size(0)
         #
         # # sort input by quesiton length
