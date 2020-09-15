@@ -130,7 +130,9 @@ def test():
         only_location=False
     )
 
-    dataloader = DataLoader(
+    p = dataset_test.__getitem__(0)
+
+    """dataloader = DataLoader(
         dataset=dataset_test,
         batch_size=optimizer_config['batch_size'],
         shuffle=False,
@@ -148,6 +150,6 @@ def test():
         print(len(sample['FasterRCNN']['boxes']))
         k += 1
         if(k==3):
-            break
+            break"""
 
 test()

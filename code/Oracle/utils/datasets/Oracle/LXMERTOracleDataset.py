@@ -178,9 +178,18 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
+                    true_flag = 1
+                    if len(prev_answer)>0:
+                        true_flag = (prev_answer[0]==1)
+
                     if self.history:
-                        question = prev_ques+prev_answer+q_token_ids
-                        question_length = prev_length+length
+                        if true_flag:
+                            question = prev_ques+prev_answer+q_token_ids
+                        else:
+                            prev_ques = prev_ques[:-prev_length]
+                            question = prev_ques+prev_answer+q_token_ids
+                        question = question[-self.max_diag_len:]
+                        question_length = len(question)
                     else:
                         question = q_token_ids
                         question_length = length
@@ -210,7 +219,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]["history_raw"] = qa["question"].strip().lower()
                     oracle_data[_id]["target_bbox"] = target_bbox
 
-                    prev_ques = copy.deepcopy(q_token_ids)
+                    prev_ques = copy.deepcopy(prev_ques+q_token_ids)
                     prev_answer = [copy.deepcopy(a_token)]
                     prev_length = length+1
 
@@ -300,12 +309,22 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
+                    true_flag = 1
+                    if len(prev_answer)>0:
+                        true_flag = (prev_answer[0]==1)
+
                     if self.history:
-                        question = prev_ques+prev_answer+q_token_ids
-                        question_length = prev_length+length
+                        if true_flag:
+                            question = prev_ques+prev_answer+q_token_ids
+                        else:
+                            prev_ques = prev_ques[-prev_length:]
+                            question = prev_ques+prev_answer+q_token_ids
+                        question = question[-self.max_diag_len:]
+                        question_length = len(question)
                     else:
                         question = q_token_ids
                         question_length = length
+
 
                     if self.history:
                         question.extend([self.word2i['<padding>']] * (self.max_diag_len - len(question)))
@@ -320,7 +339,6 @@ class LXMERTOracleDataset(Dataset):
                             spatial = get_spatial_feat(bbox=target_bbox, im_width=game['image']['width'], im_height=game['image']['height'])
                             object_category = o['category_id']
                             break
-
                     oracle_data[_id]                = dict()
                     oracle_data[_id]['question']    = question
                     oracle_data[_id]['length']      = question_length
@@ -332,7 +350,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]["history_raw"] = qa["question"].strip().lower()
                     oracle_data[_id]["target_bbox"] = target_bbox
 
-                    prev_ques = copy.deepcopy(q_token_ids)
+                    prev_ques = copy.deepcopy(prev_ques+q_token_ids)
                     prev_answer = [copy.deepcopy(a_token)]
                     prev_length = length+1
 

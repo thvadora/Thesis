@@ -209,7 +209,6 @@ if __name__ == '__main__':
             # Get Batch
             questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
                 sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
-
             # Forward pass
             history_raw = sample["history_raw"]
             fasterrcnn_features = sample['FasterRCNN']['features']
