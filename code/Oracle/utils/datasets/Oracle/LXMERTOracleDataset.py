@@ -167,10 +167,10 @@ class LXMERTOracleDataset(Dataset):
                     if not game['status'] == 'success':
                         continue
 
-                if self.history:
-                    prev_ques = list()
-                    prev_answer = list()
-                    prev_length = 0
+                
+                prev_ques = list()
+                prev_answer = list()
+                prev_length = 0
                 for i, qa in enumerate(game['qas']):
                     q_tokens = tknzr.tokenize(qa['question'])
                     q_token_ids = [self.word2i[w] if w in self.word2i else self.word2i['<unk>']for w in q_tokens][:self.max_src_length]
@@ -178,15 +178,17 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
-                    true_flag = 1
-                    if len(prev_answer)>0:
-                        true_flag = (prev_answer[0]==1)
 
                     if self.history:
+
+                        true_flag = 1
+                        if len(prev_answer)>0:
+                            true_flag = (prev_answer[0]==1)
+
                         if true_flag:
                             question = prev_ques+prev_answer+q_token_ids
                         else:
-                            prev_ques = prev_ques[:-prev_length]
+                            prev_ques = prev_ques[:(-prev_length+1)]
                             question = prev_ques+prev_answer+q_token_ids
                         question = question[-self.max_diag_len:]
                         question_length = len(question)

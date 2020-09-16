@@ -43,8 +43,8 @@
     "min_occ": 3,
     "new_oracle_data": false,
     "new_vocab": false,
-    "successful_only": true,
-    "history": true
+    "successful_only": false,
+    "history": false
   },
   "exp_config": {
     "name": "Oracle",

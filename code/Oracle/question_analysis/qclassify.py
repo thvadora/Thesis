@@ -17,7 +17,7 @@ class qclass():
         super(qclass, self).__init__()
 
         self.tknzr = TweetTokenizer(preserve_case=False)
-        self.nlp_s = stanza.Pipeline(lang='en', processors='tokenize,pos,ner', tokenize_no_ssplit=True)
+        #self.nlp_s = stanza.Pipeline(lang='en', processors='tokenize,pos,ner', tokenize_no_ssplit=True)
         self.color_tokens = []
         self.shape_tokens = []
         self.size_tokens = []
@@ -30,7 +30,7 @@ class qclass():
 
         self.attribute_tokens=[]
 
-        word_annotation = './data/mod_word_annotation'
+        word_annotation = '/home/cp2020/cp202002/Thesis/code/Oracle/question_analysis/analysis_data/mod_word_annotation'
 
         with open(word_annotation) as f:
             lines = f.readlines()
@@ -163,7 +163,7 @@ class qclass():
         verbs = {'has', 'have', 'facing'}
         batch = batch.lower()
         # Perform POS with Stanza
-        doc = self.nlp_s(batch)
+        #doc = self.nlp_s(batch)
         # List of location question types to return
         classification = []
         for sentence in doc.sentences:
@@ -246,7 +246,7 @@ class qclass():
         [DEPRECATED]
         """
         que = que.lower()
-        doc = self.nlp_s(que)
+        #doc = self.nlp_s(que)
         flag = False
         #flags = [False for _ in doc.sentences]
         for sentence in doc.sentences:
@@ -269,7 +269,7 @@ class qclass():
         [DEPRECATED]
         """
         que = que.lower()
-        doc = self.nlp_s(que)
+        #doc = self.nlp_s(que)
         flag = False
         #flags = [False for _ in doc.sentences]
         for sentence in doc.sentences:

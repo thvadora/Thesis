@@ -18,6 +18,7 @@ from utils.config import load_config
 from utils.datasets.Oracle.LXMERTOracleDataset import LXMERTOracleDataset
 from utils.model_loading import load_model
 from utils.vocab import create_vocab
+from utils.evaluate_byclass import compute_bycategory
 
 
 def calculate_accuracy_oracle(predictions, targets):
@@ -55,6 +56,8 @@ if __name__ == '__main__':
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
     parser.add_argument("-config", type=str, default="config/Oracle/config_small.json", help='Config file')
     parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
+    parser.add_argument("-set", type=str, default="test", help='Select train, val o test')
+    parser.add_argument("-add_bycat", type=bool, default=True)
     parser.add_argument("-exp_name", type=str, help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
     parser.add_argument("--preloaded", type=bool, default=False)
@@ -163,8 +166,8 @@ if __name__ == '__main__':
 
     dataset_test = LXMERTOracleDataset(
         data_dir            = args.data_dir,
-        data_file           = data_paths['test_file'],
-        split               = 'test',
+        data_file           = data_paths[args.set+'_file'],
+        split               = args.set,
         visual_feat_file    = data_paths[args.img_feat]['image_features'],
         visual_feat_mapping_file = data_paths[exp_config['img_feat']]['img2id'],
         visual_feat_crop_file = data_paths[args.img_feat]['crop_features'],
@@ -260,4 +263,7 @@ if __name__ == '__main__':
 
                 pos += 1
 
-        print("Test accuracy: {}".format(np.mean(accuracy)))
+        print("Accuracy: {}".format(np.mean(accuracy)))
+
+    if args.add_bycat:
+        compute_bycategory("lxmert_scratch_small_predictions.csv")
