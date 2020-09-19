@@ -54,7 +54,7 @@ def calculate_accuracy_oracle_all(predictions, targets):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
-    parser.add_argument("-config", type=str, default="config/Oracle/config_small.json", help='Config file')
+    parser.add_argument("-config", type=str, default="small", help='Config [small or big]')
     parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
     parser.add_argument("-set", type=str, default="test", help='Select train, val o test')
     parser.add_argument("-add_bycat", type=bool, default=True)
@@ -64,8 +64,12 @@ if __name__ == '__main__':
     parser.add_argument("-load_bin_path", type=str)
 
     args = parser.parse_args()
+    config_file = 'config/Oracle/config_small.json'
+    
+    if args.config == "big":
+        config_file = 'config/Oracle/config.json'
 
-    config = load_config(args.config)
+    config = load_config(config_file)
 
     # Experiment Settings
     exp_config = config['exp_config']
@@ -267,3 +271,4 @@ if __name__ == '__main__':
 
     if args.add_bycat:
         compute_bycategory("lxmert_scratch_small_predictions.csv")
+    

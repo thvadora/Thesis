@@ -178,19 +178,30 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
-
+                    #Postive History
                     if self.history:
 
                         true_flag = 1
                         if len(prev_answer)>0:
                             true_flag = (prev_answer[0]==1)
 
+                        #I only add postive answered questions
                         if true_flag:
                             question = prev_ques+prev_answer+q_token_ids
                         else:
+                            
+                            #Resplace '?' by '.'
+                            prev_ques = list(map(lambda x: x if x!=12 else 515,question))
+
                             prev_ques = prev_ques[:(-prev_length+1)]
                             question = prev_ques+prev_answer+q_token_ids
-                        question = question[-self.max_diag_len:]
+
+                        #If dialog got bigger than limit, only take first questions
+                        if len(question) > self.max_diag_len:
+                            current_ans_length = length
+                            can_add = self.max_diag_len - current_ans_length
+                            question = question[:can_add]+question[-current_ans_length:]
+
                         question_length = len(question)
                     else:
                         question = q_token_ids
