@@ -23,7 +23,7 @@
       "llayers": 4,
       "xlayers": 2,
       "rlayers": 2,
-      "from_scratch": true,
+      "from_scratch": false,
       "small": true,
       "model_path": "./lxmert/snap/pretrained/model"
     }
@@ -44,7 +44,7 @@
     "new_oracle_data": false,
     "new_vocab": false,
     "successful_only": true,
-    "history": true
+    "history": false
   },
   "exp_config": {
     "name": "Oracle",

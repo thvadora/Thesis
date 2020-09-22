@@ -14,6 +14,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from models.LXMERTOracleInputTarget import LXMERTOracleInputTarget
+from models.DLXMERT import DLXMERT
 from utils.config import load_config
 from utils.datasets.Oracle.LXMERTOracleDataset import LXMERTOracleDataset
 from utils.model_loading import load_model
@@ -21,21 +22,7 @@ from utils.vocab import create_vocab
 from utils.evaluate_byclass import compute_bycategory
 
 
-def calculate_accuracy_oracle(predictions, targets):
-    """
-    :param prediction: NxC
-    :param targets: N
-    """
-    if isinstance(predictions, Variable):
-        predictions = predictions.data
-    if isinstance(targets, Variable):
-        targets = targets.data
-
-    predicted_classes = predictions.topk(1)[1]
-    accuracy = torch.eq(predicted_classes.squeeze(1), targets).sum().item()/targets.size(0)
-    return accuracy
-
-def calculate_accuracy_oracle_all(predictions, targets):
+def calculate_accuracy(predictions, targets):
     """
     :param prediction: NxC
     :param targets: N
@@ -72,6 +59,7 @@ if __name__ == '__main__':
     config = load_config(config_file)
 
     # Experiment Settings
+
     exp_config = config['exp_config']
     exp_config['img_feat'] = args.img_feat.lower()
     exp_config['use_cuda'] = torch.cuda.is_available()
@@ -107,23 +95,10 @@ if __name__ == '__main__':
         img_w = mscoco_bottomup_index["img_w"]
 
     print("Loading MSCOCO bottomup features from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_features"]))
-    mscoco_bottomup_features = None
-    if args.preloaded:
-        import sharearray
-        print("Loading preloaded MS-COCO Bottom-Up features")
-        mscoco_bottomup_features = sharearray.cache("mscoco_vectorized_features", lambda: None)
-        mscoco_bottomup_features = np.array(mscoco_bottomup_features)
-    else:
-        mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
+    mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
 
     print("Loading MSCOCO bottomup boxes from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"]))
-    mscoco_bottomup_boxes = None
-    if args.preloaded:
-        print("Loading preloaded MS-COCO Bottom-Up boxes")
-        mscoco_bottomup_boxes = sharearray.cache("mscoco_vectorized_boxes", lambda: None)
-        mscoco_bottomup_boxes = np.array(mscoco_bottomup_boxes)
-    else:
-        mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
+    mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
 
     imgid2fasterRCNNfeatures = {}
     for mscoco_id, mscoco_pos in image_id2image_pos.items():
@@ -139,34 +114,33 @@ if __name__ == '__main__':
             data_file=data_paths['train_file'],
             min_occ=dataset_config['min_occ'])
 
-    print("Bert tokenizer or standard vocab?")
-
     with open(os.path.join(args.data_dir, data_paths['vocab_file'])) as file:
         vocab = json.load(file)
-
-    # with open('./data/vocab_bert_tok.json') as file:
-    #     vocab = json.load(file)
 
     word2i = vocab['word2i']
     i2word = vocab['i2word']
     vocab_size = len(word2i)
 
-    # Init Model, Loss Function and Optimizer
-    model = LXMERTOracleInputTarget(
-        no_words            = vocab_size,
-        no_words_feat       = embedding_config['no_words_feat'],
-        no_categories       = embedding_config['no_categories'],
-        no_category_feat    = embedding_config['no_category_feat'],
-        no_hidden_encoder   = lstm_config['no_hidden_encoder'],
-        mlp_layer_sizes     = mlp_config['layer_sizes'],
-        no_visual_feat      = inputs_config['no_visual_feat'],
-        no_crop_feat        = inputs_config['no_crop_feat'],
-        dropout             = lstm_config['dropout'],
-        inputs_config       = inputs_config,
-        scale_visual_to     = inputs_config['scale_visual_to'],
-        lxmert_encoder_args = inputs_config["LXRTEncoder"]
+    lxmert_oracle_dict = {
+        'no_words'            : vocab_size,
+        'no_words_feat'       : embedding_config['no_words_feat'],
+        'no_categories'       : embedding_config['no_categories'],
+        'no_category_feat'    : embedding_config['no_category_feat'],
+        'no_hidden_encoder'   : lstm_config['no_hidden_encoder'],
+        'mlp_layer_sizes'     : mlp_config['layer_sizes'],
+        'no_visual_feat'      : inputs_config['no_visual_feat'],
+        'no_crop_feat'        : inputs_config['no_crop_feat'],
+        'dropout'             : lstm_config['dropout'],
+        'inputs_config'       : inputs_config,
+        'scale_visual_to'     : inputs_config['scale_visual_to'],
+        'lxmert_encoder_args' : inputs_config["LXRTEncoder"]
+    }
+
+    model = DLXMERT(
+        lxmert_oracle_dict = lxmert_oracle_dict,
+        lxmert_oracle_weights = args.load_bin_path,
+        pretrain_size = args.config
     )
-    model = load_model(model, args.load_bin_path, use_dataparallel=exp_config["use_cuda"])
 
     dataset_test = LXMERTOracleDataset(
         data_dir            = args.data_dir,
@@ -232,7 +206,9 @@ if __name__ == '__main__':
                 sample['FasterRCNN']['boxes'],
                 sample["target_bbox"]
             )
-            # Calculate Accuracy
+            print(pred_answer)
+            break
+            """
             accuracy.extend(calculate_accuracy_oracle_all(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))
 
             stream.set_description("Accuracy: {}".format(np.round(np.mean(accuracy), 2)))
@@ -269,5 +245,4 @@ if __name__ == '__main__':
         print("Accuracy: {}".format(np.mean(accuracy)))
 
     if args.add_bycat:
-        compute_bycategory("lxmert_scratch_small_predictions.csv")
-    
+        compute_bycategory("lxmert_scratch_small_predictions.csv")"""
