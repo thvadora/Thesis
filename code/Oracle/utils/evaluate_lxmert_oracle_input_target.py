@@ -210,6 +210,7 @@ if __name__ == '__main__':
     tok2ans = {v: k for k, v in ans2tok.items()}
 
     pos = 0
+    did = 0
     last_game_id = None
     with open("lxmert_scratch_small_predictions.csv", mode="w") as out_file:
         writer = csv.writer(out_file)
@@ -268,6 +269,9 @@ if __name__ == '__main__':
                 )
 
                 pos += 1
+            did+=1
+            if did > 20:
+                break
 
         print("Accuracy: {}".format(np.mean(accuracy)))
 

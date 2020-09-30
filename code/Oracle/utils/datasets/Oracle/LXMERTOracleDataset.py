@@ -170,6 +170,7 @@ class LXMERTOracleDataset(Dataset):
                 
                 prev_ques = list()
                 prev_answer = list()
+                question = list()
                 prev_length = 0
                 for i, qa in enumerate(game['qas']):
                     q_tokens = tknzr.tokenize(qa['question'])
@@ -180,19 +181,17 @@ class LXMERTOracleDataset(Dataset):
 
                     #Postive History
                     if self.history:
-
-                        true_flag = 1
-                        if len(prev_answer)>0:
-                            true_flag = (prev_answer[0]==1)
+                        if prev_answer==[]:
+                            true_flag = 0
+                        else:
+                            true_flag = prev_answer[0]
 
                         #I only add postive answered questions
+                        print(prev_answer)
+                        print(true_flag)
                         if true_flag:
                             question = prev_ques+prev_answer+q_token_ids
                         else:
-                            
-                            #Resplace '?' by '.'
-                            prev_ques = list(map(lambda x: x if x!=12 else 515,question))
-
                             prev_ques = prev_ques[:(-prev_length+1)]
                             question = prev_ques+prev_answer+q_token_ids
 
@@ -221,6 +220,9 @@ class LXMERTOracleDataset(Dataset):
                             object_category = o['category_id']
                             break
 
+                    #Resplace '?' by '.'
+                    question = list(map(lambda x: x if x!=12 else 515,question))
+                    
                     oracle_data[_id]                = dict()
                     oracle_data[_id]['qid']         = qa['id']
                     oracle_data[_id]['question']    = question
