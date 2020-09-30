@@ -1,12 +1,15 @@
+from types import SimpleNamespace
+import copy
+
 import argparse
 import csv
 import datetime
 import json
 import sys
 from time import time
+import h5py
 
 import numpy as np
-import pandas as pd
 import os
 import torch
 import tqdm
@@ -21,22 +24,79 @@ from utils.model_loading import load_model
 from utils.vocab import create_vocab
 from utils.evaluate_byclass import compute_bycategory
 
+import torch
+import torch.nn as nn
+from torch.autograd import Variable
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-def calculate_accuracy_oracle(predictions, targets):
-    """
-    :param prediction: NxC
-    :param targets: N
-    """
-    if isinstance(predictions, Variable):
-        predictions = predictions.data
-    if isinstance(targets, Variable):
-        targets = targets.data
+from models.LXMERTOracleInputTarget import LXMERTOracleInputTarget as LXMERT
+from utils.model_loading import load_model
 
-    predicted_classes = predictions.topk(1)[1]
-    accuracy = torch.eq(predicted_classes.squeeze(1), targets).sum().item()/targets.size(0)
-    return accuracy
+use_cuda = torch.cuda.is_available()
 
-def calculate_accuracy_oracle_all(predictions, targets):
+class Identity(nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+        
+    def forward(self, x):
+        return x
+
+class GEN(nn.Module):
+
+    def __init__(self, lxmert_oracle_dict, lxmert_oracle_weights, pretrain_size):
+        super().__init__()
+        self.lxmert = LXMERT(
+            no_words            = lxmert_oracle_dict['no_words'],
+            no_words_feat       = lxmert_oracle_dict['no_words_feat'],
+            no_categories       = lxmert_oracle_dict['no_categories'],
+            no_category_feat    = lxmert_oracle_dict['no_category_feat'],
+            no_hidden_encoder   = lxmert_oracle_dict['no_hidden_encoder'],
+            mlp_layer_sizes     = lxmert_oracle_dict['mlp_layer_sizes'],
+            no_visual_feat      = lxmert_oracle_dict['no_visual_feat'],
+            no_crop_feat        = lxmert_oracle_dict['no_crop_feat'],
+            dropout             = lxmert_oracle_dict['dropout'],
+            inputs_config       = lxmert_oracle_dict['inputs_config'],
+            scale_visual_to     = lxmert_oracle_dict['scale_visual_to'],
+            lxmert_encoder_args = lxmert_oracle_dict['lxmert_encoder_args']
+        )
+        self.lxmert = load_model(self.lxmert, lxmert_oracle_weights, use_dataparallel=use_cuda)
+        
+        #encoder only
+        self.lxmert_encoder = copy.deepcopy(self.lxmert)
+        self.lxmert_encoder.module.mlp = Identity()
+        self.lxmert_encoder.eval()
+
+        #extract crossAtt
+        self.extractions = {}
+        if pretrain_size == 'small':
+            self.lxmert_encoder.module.lxrt_encoder.model.bert.encoder.x_layers[1].visual_attention.output.dense.register_forward_hook(self.extract('crossAtt'))
+        if pretrain_size == 'big':
+            self.lxmert_encoder.module.lxrt_encoder.model.bert.encoder.x_layers[4].visual_attention.output.dense.register_forward_hook(self.extract('crossAtt'))
+
+    def extract(self, name):
+        def hook(model, input, output):
+            self.extractions[name] = output.detach()
+        return hook
+
+    def forward(self, questions, obj_categories, spatials, crop_features, visual_features, lengths,
+                history_raw, fasterrcnn_features, fasterrcnn_boxes, target_bbox):
+        lxmert_out = self.lxmert_encoder(questions,
+                obj_categories,
+                spatials,
+                crop_features,
+                visual_features,
+                lengths,
+                history_raw,
+                fasterrcnn_features,
+                fasterrcnn_boxes,
+                target_bbox
+            )
+        crossAtt = self.extractions['crossAtt']
+        return (lxmert_out, crossAtt)
+
+
+def calculate_accuracy(predictions, targets):
     """
     :param prediction: NxC
     :param targets: N
@@ -63,8 +123,7 @@ if __name__ == '__main__':
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
     parser.add_argument("--preloaded", type=bool, default=False)
     parser.add_argument("-load_bin_path", type=str)
-    parser.add_argument("-case", type=bool, default=True)
-
+    parser.add_argument("-save_in", type=str)
 
     args = parser.parse_args()
     config_file = 'config/Oracle/config_small.json'
@@ -75,6 +134,7 @@ if __name__ == '__main__':
     config = load_config(config_file)
 
     # Experiment Settings
+
     exp_config = config['exp_config']
     exp_config['img_feat'] = args.img_feat.lower()
     exp_config['use_cuda'] = torch.cuda.is_available()
@@ -110,23 +170,10 @@ if __name__ == '__main__':
         img_w = mscoco_bottomup_index["img_w"]
 
     print("Loading MSCOCO bottomup features from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_features"]))
-    mscoco_bottomup_features = None
-    if args.preloaded:
-        import sharearray
-        print("Loading preloaded MS-COCO Bottom-Up features")
-        mscoco_bottomup_features = sharearray.cache("mscoco_vectorized_features", lambda: None)
-        mscoco_bottomup_features = np.array(mscoco_bottomup_features)
-    else:
-        mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
+    mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
 
     print("Loading MSCOCO bottomup boxes from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"]))
-    mscoco_bottomup_boxes = None
-    if args.preloaded:
-        print("Loading preloaded MS-COCO Bottom-Up boxes")
-        mscoco_bottomup_boxes = sharearray.cache("mscoco_vectorized_boxes", lambda: None)
-        mscoco_bottomup_boxes = np.array(mscoco_bottomup_boxes)
-    else:
-        mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
+    mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
 
     imgid2fasterRCNNfeatures = {}
     for mscoco_id, mscoco_pos in image_id2image_pos.items():
@@ -142,34 +189,33 @@ if __name__ == '__main__':
             data_file=data_paths['train_file'],
             min_occ=dataset_config['min_occ'])
 
-    print("Bert tokenizer or standard vocab?")
-
     with open(os.path.join(args.data_dir, data_paths['vocab_file'])) as file:
         vocab = json.load(file)
-
-    # with open('./data/vocab_bert_tok.json') as file:
-    #     vocab = json.load(file)
 
     word2i = vocab['word2i']
     i2word = vocab['i2word']
     vocab_size = len(word2i)
 
-    # Init Model, Loss Function and Optimizer
-    model = LXMERTOracleInputTarget(
-        no_words            = vocab_size,
-        no_words_feat       = embedding_config['no_words_feat'],
-        no_categories       = embedding_config['no_categories'],
-        no_category_feat    = embedding_config['no_category_feat'],
-        no_hidden_encoder   = lstm_config['no_hidden_encoder'],
-        mlp_layer_sizes     = mlp_config['layer_sizes'],
-        no_visual_feat      = inputs_config['no_visual_feat'],
-        no_crop_feat        = inputs_config['no_crop_feat'],
-        dropout             = lstm_config['dropout'],
-        inputs_config       = inputs_config,
-        scale_visual_to     = inputs_config['scale_visual_to'],
-        lxmert_encoder_args = inputs_config["LXRTEncoder"]
+    lxmert_oracle_dict = {
+        'no_words'            : vocab_size,
+        'no_words_feat'       : embedding_config['no_words_feat'],
+        'no_categories'       : embedding_config['no_categories'],
+        'no_category_feat'    : embedding_config['no_category_feat'],
+        'no_hidden_encoder'   : lstm_config['no_hidden_encoder'],
+        'mlp_layer_sizes'     : mlp_config['layer_sizes'],
+        'no_visual_feat'      : inputs_config['no_visual_feat'],
+        'no_crop_feat'        : inputs_config['no_crop_feat'],
+        'dropout'             : lstm_config['dropout'],
+        'inputs_config'       : inputs_config,
+        'scale_visual_to'     : inputs_config['scale_visual_to'],
+        'lxmert_encoder_args' : inputs_config["LXRTEncoder"]
+    }
+
+    model = GEN(
+        lxmert_oracle_dict = lxmert_oracle_dict,
+        lxmert_oracle_weights = args.load_bin_path,
+        pretrain_size = args.config
     )
-    model = load_model(model, args.load_bin_path, use_dataparallel=exp_config["use_cuda"])
 
     dataset_test = LXMERTOracleDataset(
         data_dir            = args.data_dir,
@@ -194,7 +240,7 @@ if __name__ == '__main__':
 
     dataloader = DataLoader(
         dataset=dataset_test,
-        batch_size=optimizer_config['batch_size'],
+        batch_size=1,
         shuffle=False,
         num_workers=0 if sys.gettrace() else 4,
         pin_memory=exp_config['use_cuda']
@@ -209,74 +255,44 @@ if __name__ == '__main__':
 
     tok2ans = {v: k for k, v in ans2tok.items()}
 
+    qid2pos = {}
+
+    encodings = np.zeros(shape=(len(dataloader), 768), dtype=np.float32)
+    crosses = np.zeros(shape=(len(dataloader), 36, 768), dtype=np.float32)
+
     pos = 0
+    newId = 0
     last_game_id = None
-    with open("lxmert_scratch_small_predictions.csv", mode="w") as out_file:
-        writer = csv.writer(out_file)
-        writer.writerow(["Game ID", "Position", "Image", "Question", "GT Answer", "Model Answer"])
-        stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
-        for i_batch, sample in stream:
-            # Get Batch
-            questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
-                sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
-            # Forward pass
-            history_raw = sample["history_raw"]
-            fasterrcnn_features = sample['FasterRCNN']['features']
-            fasterrcnn_boxes = sample['FasterRCNN']['boxes']
-            #print("before: ", len(history_raw), len(fasterrcnn_features), len(fasterrcnn_boxes))
-            pred_answer = model(Variable(questions),
-                Variable(obj_categories),
-                Variable(spatials),
-                Variable(crop_features),
-                Variable(visual_features),
-                Variable(lengths),
-                sample["history_raw"],
-                sample['FasterRCNN']['features'], #problem of dimensions
-                sample['FasterRCNN']['boxes'],
-                sample["target_bbox"]
-            )
-            # Calculate Accuracy
-            accuracy.extend(calculate_accuracy_oracle_all(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))
-
-            stream.set_description("Accuracy: {}".format(np.round(np.mean(accuracy), 2)))
-            stream.refresh()  # to show immediately the update
-
-            if i_batch == 0:
-                last_game_id = sample["game_id"][0]
-
-            pred_answer_topk = pred_answer.topk(1)[1]
-
-            for i in range(questions.shape[0]):
-                question_raw = " ".join([i2word[str(idx.item())] for idx in questions[i] if idx.item() != 0])
-                answer_raw = tok2ans[answers[i].item()]
-                pred_answer_raw = tok2ans[pred_answer_topk[i].item()]
-                game_id = sample["game_id"][i]
-
-                if last_game_id != game_id:
-                    last_game_id = game_id
-                    pos = 0
-
-                writer.writerow(
-                    [
-                        game_id,
-                        pos,
-                        sample["image_file"][i],
-                        question_raw,
-                        answer_raw,
-                        pred_answer_raw
-                    ]
-                )
-
-                pos += 1
-
-        print("Accuracy: {}".format(np.mean(accuracy)))
-
-    if args.add_bycat:
-        compute_bycategory("lxmert_scratch_small_predictions.csv")
-    
-    if args.case:
-        cases = [9991, 10582, 15377, 16730, 26043, 30823, 35257, 44834, 45595, 51823, 52488, 60777, 68445]
-        data = pd.read_csv('lxmert_scratch_small_predictions.csv')
-        for c in cases:
-            print(data.loc[data['Game ID'] == c, ['Game ID', 'Question', 'GT Answer', 'Model Answer']])
+    stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
+    for i_batch, sample in stream:
+        # Get Batch
+        questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
+            sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
+        # Forward pass
+        history_raw = sample["history_raw"]
+        fasterrcnn_features = sample['FasterRCNN']['features']
+        fasterrcnn_boxes = sample['FasterRCNN']['boxes']
+        pred_answer = model(Variable(questions),
+            Variable(obj_categories),
+            Variable(spatials),
+            Variable(crop_features),
+            Variable(visual_features),
+            Variable(lengths),
+            sample["history_raw"],
+            sample['FasterRCNN']['features'],
+            sample['FasterRCNN']['boxes'],
+            sample["target_bbox"]
+        )
+        f = pred_answer[0][0].cpu().numpy()
+        s = pred_answer[1][0].cpu().numpy()
+        encodings[pos] = f
+        crosses[pos] = s
+        qid2pos[int(sample['qid'].numpy()[0])] = pos
+        pos += 1
+    with open(os.path.join(args.save_in, 'encoding_'+args.set+'.npy'), 'wb') as enc:
+        np.save(enc, encodings)
+    with open(os.path.join(args.save_in, 'crossAtt_'+args.set+'.npy'), 'wb') as cr:
+        np.save(cr, crosses)
+    with open(os.path.join(args.save_in, 'qid2pos_'+args.set+'.json'), 'w') as outfile:
+        json.dump(qid2pos, outfile)
     

@@ -206,7 +206,7 @@ if __name__ == '__main__':
                 sample['FasterRCNN']['boxes'],
                 sample["target_bbox"]
             )
-            print(pred_answer)
+            print(pred_answer[0].size(), pred_answer[1].size())
             break
             """
             accuracy.extend(calculate_accuracy_oracle_all(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))

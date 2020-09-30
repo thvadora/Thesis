@@ -92,7 +92,6 @@ class LXMERTOracleDataset(Dataset):
             print("reading", os.path.join(self.data_dir, self.data_file_name))
             with open(os.path.join(self.data_dir, self.data_file_name), 'r') as file:
                 self.oracle_data = json.load(file)
-
         for k in self.oracle_data:
             self.oracle_data[k]["FasterRCNN"] = imgid2fasterRCNNfeatures[self.oracle_data[k]["image_file"].split(".")[0]]
 
@@ -123,6 +122,7 @@ class LXMERTOracleDataset(Dataset):
                 'obj_cat': self.oracle_data[idx]['obj_cat'],
                 'length': self.oracle_data[idx]['length'],
                 'game_id': self.oracle_data[idx]['game_id'],
+                'qid' : self.oracle_data[idx]['qid'],
                 "history_raw": self.oracle_data[idx]["history_raw"],
                 "unnormalized_target_bbox": np.asarray(self.oracle_data[idx]["target_bbox"], dtype=np.float32)
                 }
@@ -222,6 +222,7 @@ class LXMERTOracleDataset(Dataset):
                             break
 
                     oracle_data[_id]                = dict()
+                    oracle_data[_id]['qid']         = qa['id']
                     oracle_data[_id]['question']    = question
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
@@ -322,17 +323,30 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
-                    true_flag = 1
-                    if len(prev_answer)>0:
-                        true_flag = (prev_answer[0]==1)
-
+                    #Postive History
                     if self.history:
+
+                        true_flag = 1
+                        if len(prev_answer)>0:
+                            true_flag = (prev_answer[0]==1)
+
+                        #I only add postive answered questions
                         if true_flag:
                             question = prev_ques+prev_answer+q_token_ids
                         else:
-                            prev_ques = prev_ques[-prev_length:]
+                            
+                            #Resplace '?' by '.'
+                            prev_ques = list(map(lambda x: x if x!=12 else 515,question))
+
+                            prev_ques = prev_ques[:(-prev_length+1)]
                             question = prev_ques+prev_answer+q_token_ids
-                        question = question[-self.max_diag_len:]
+
+                        #If dialog got bigger than limit, only take first questions
+                        if len(question) > self.max_diag_len:
+                            current_ans_length = length
+                            can_add = self.max_diag_len - current_ans_length
+                            question = question[:can_add]+question[-current_ans_length:]
+
                         question_length = len(question)
                     else:
                         question = q_token_ids
@@ -353,6 +367,7 @@ class LXMERTOracleDataset(Dataset):
                             object_category = o['category_id']
                             break
                     oracle_data[_id]                = dict()
+                    oracle_data[_id]['qid']         = qa['id']
                     oracle_data[_id]['question']    = question
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
