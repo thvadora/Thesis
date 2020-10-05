@@ -187,8 +187,6 @@ class LXMERTOracleDataset(Dataset):
                             true_flag = prev_answer[0]
 
                         #I only add postive answered questions
-                        print(prev_answer)
-                        print(true_flag)
                         if true_flag:
                             question = prev_ques+prev_answer+q_token_ids
                         else:

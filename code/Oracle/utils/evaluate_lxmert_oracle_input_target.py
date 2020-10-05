@@ -212,7 +212,7 @@ if __name__ == '__main__':
     pos = 0
     did = 0
     last_game_id = None
-    with open("lxmert_scratch_small_predictions.csv", mode="w") as out_file:
+    with open("lxmert_"+args.set+"predictions.csv", mode="w") as out_file:
         writer = csv.writer(out_file)
         writer.writerow(["Game ID", "Position", "Image", "Question", "GT Answer", "Model Answer"])
         stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
@@ -269,9 +269,6 @@ if __name__ == '__main__':
                 )
 
                 pos += 1
-            did+=1
-            if did > 20:
-                break
 
         print("Accuracy: {}".format(np.mean(accuracy)))
 

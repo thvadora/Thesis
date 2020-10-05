@@ -15,7 +15,7 @@ import collections
 from torch.utils.data import DataLoader
 
 class DLXMERTOracleDataset(Dataset):
-    def __init__(self, turns, data_path, sett, only_encodings):
+    def __init__(self, turns, data_path, sett, only_encodings, succesful_only=True):
         self.turns = turns
         self.data_path = data_path
         self.sett = sett
@@ -34,7 +34,12 @@ class DLXMERTOracleDataset(Dataset):
         self.gw = []
         with gzip.open(gw_file) as file:
             for game in file:
-                self.gw.append(json.loads(game.decode("utf-8")))
+                g = json.loads(game.decode("utf-8"))
+                if succesful_only:
+                    if g['status'] == 'success':
+                        self.gw.append(json.loads(game.decode("utf-8")))
+                else:
+                    self.gw.append(json.loads(game.decode("utf-8")))
         
     def __len__(self):
         return len(self.gw)
@@ -44,13 +49,20 @@ class DLXMERTOracleDataset(Dataset):
         amount = self.turns
         dialog = data['qas']
         lxmertout = np.zeros(shape=(amount, 768), dtype=np.float32)
+        ans = np.zeros(shape=(amount), dtype=np.longlong)
+        ans2tok = {
+            'Yes' : 1,
+            'No'  : 0,
+            'N/A' : 2
+        }
         for index, turn in enumerate(dialog):
             if index == amount:
                 break
             qid = turn['id']
             position = self.qid2pos[str(qid)]
             lxmertout[index] = self.encoding[position]
-        return lxmertout
+            ans[index] = ans2tok[turn['answer']]
+        return lxmertout, ans
 
 
 if __name__ == '__main__':
