@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
     parser.add_argument("-config", type=str, default="config/Oracle/config.json", help='Config file')
-    parser.add_argument("-img_feat", type=str, default="vgg", help='Select "vgg" or "res" as image features')
+    parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
     parser.add_argument("-exp_name", type=str, help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
     parser.add_argument("--preloaded", type=bool, default=False)
@@ -172,7 +172,7 @@ if __name__ == '__main__':
         hdf5_crop_feat      = 'crop_features',
         imgid2fasterRCNNfeatures = imgid2fasterRCNNfeatures,
         history             = dataset_config['history'],
-        new_oracle_data     = True,
+        new_oracle_data     = dataset_config['new_oracle_data'],
         successful_only     = dataset_config['successful_only'],
         load_crops=True,
         only_location=False
@@ -191,7 +191,7 @@ if __name__ == '__main__':
         hdf5_crop_feat      = 'crop_features',
         imgid2fasterRCNNfeatures = imgid2fasterRCNNfeatures,
         history             = dataset_config['history'],
-        new_oracle_data     = True, #dataset_config['new_oracle_data'],
+        new_oracle_data     = dataset_config['new_oracle_data'],
         successful_only     = dataset_config['successful_only'],
         load_crops=True,
         only_location=False,
@@ -236,8 +236,8 @@ if __name__ == '__main__':
             stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
             for i_batch, sample in stream:
                 # Get Batch
-                questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
-                    sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
+                questions, answers, crop_features, visual_features, spatials, obj_categories, lengths, train_features = \
+                        sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length'], sample['train_features']
 
                 # Forward pass
                 pred_answer = model(Variable(questions),
@@ -249,7 +249,10 @@ if __name__ == '__main__':
                     sample["history_raw"],
                     sample['FasterRCNN']['features'],
                     sample['FasterRCNN']['boxes'],
-                    sample["target_bbox"]
+                    sample["target_bbox"],
+                    Variable(sample['train_features']['input_ids']),
+                    Variable(sample['train_features']['input_mask']),
+                    Variable(sample['train_features']['segment_ids'])
                 )
 
                 # Calculate Loss

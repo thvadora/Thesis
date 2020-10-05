@@ -65,14 +65,14 @@ class LXMERTOracleDataset(Dataset):
         if self.load_crops:
             # self.cf = np.asarray(h5py.File(self.visual_feat_crop_file, 'r')[self.hdf5_crop_feat])
             #self.cf = h5py.File('./data/target_objects_features_fast.h5', 'r')['objects_features']
-            self.cf = h5py.File('./data/objects_features_all.h5', 'r')['objects_features']
+            self.cf = h5py.File('./data/target_objects_features_all.h5', 'r')['objects_features']
 
             # with open(os.path.join(data_dir, visual_feat_crop_mapping_file), 'r') as file_c:
             #     self.visual_feat_crop_mapping_file = json.load(file_c)
             # self.visual_feat_crop_mapping_file = self.visual_feat_crop_mapping_file['crops_features2id']
 
             #with open('./data/target_objects_features_index_fast.json', 'r') as file_c:
-            with open('./data/objects_features_index_all.json', 'r') as file_c:
+            with open('./data/target_objects_features_index_all.json', 'r') as file_c:
                 self.visual_feat_crop_mapping_file = json.load(file_c)
 
         with open(os.path.join(data_dir, visual_feat_mapping_file), 'r') as file_v:
@@ -100,6 +100,7 @@ class LXMERTOracleDataset(Dataset):
             print("reading", os.path.join(self.data_dir, self.data_file_name))
             with open(os.path.join(self.data_dir, self.data_file_name), 'r') as file:
                 self.oracle_data = json.load(file)
+
         for k in self.oracle_data:
             self.oracle_data[k]["FasterRCNN"] = imgid2fasterRCNNfeatures[self.oracle_data[k]["image_file"].split(".")[0]]
 
@@ -130,7 +131,6 @@ class LXMERTOracleDataset(Dataset):
                 'obj_cat': self.oracle_data[idx]['obj_cat'],
                 'length': self.oracle_data[idx]['length'],
                 'game_id': self.oracle_data[idx]['game_id'],
-                'qid' : self.oracle_data[idx]['qid'],
                 "history_raw": self.oracle_data[idx]["history_raw"],
                 "unnormalized_target_bbox": np.asarray(self.oracle_data[idx]["target_bbox"], dtype=np.float32)
                 }
@@ -152,7 +152,6 @@ class LXMERTOracleDataset(Dataset):
         res_dict['train_features']['input_ids'] = np.asarray(input_ids)
         res_dict['train_features']['input_mask'] = np.asarray(input_mask)
         res_dict['train_features']['segment_ids'] = np.asarray(segment_ids)
-
 
         res_dict['FasterRCNN'] = dict()
 
@@ -194,11 +193,10 @@ class LXMERTOracleDataset(Dataset):
                     if not game['status'] == 'success':
                         continue
 
-                
-                prev_ques = list()
-                prev_answer = list()
-                question = list()
-                prev_length = 0
+                if self.history:
+                    prev_ques = list()
+                    prev_answer = list()
+                    prev_length = 0
                 for i, qa in enumerate(game['qas']):
                     q_tokens = tknzr.tokenize(qa['question'])
                     q_token_ids = [self.word2i[w] if w in self.word2i else self.word2i['<unk>']for w in q_tokens][:self.max_src_length]
@@ -206,27 +204,9 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
-                    #Postive History
                     if self.history:
-                        if prev_answer==[]:
-                            true_flag = 0
-                        else:
-                            true_flag = prev_answer[0]
-
-                        #I only add postive answered questions
-                        if true_flag:
-                            question = prev_ques+prev_answer+q_token_ids
-                        else:
-                            prev_ques = prev_ques[:(-prev_length+1)]
-                            question = prev_ques+prev_answer+q_token_ids
-
-                        #If dialog got bigger than limit, only take first questions
-                        if len(question) > self.max_diag_len:
-                            current_ans_length = length
-                            can_add = self.max_diag_len - current_ans_length
-                            question = question[:can_add]+question[-current_ans_length:]
-
-                        question_length = len(question)
+                        question = prev_ques+prev_answer+q_token_ids
+                        question_length = prev_length+length
                     else:
                         question = q_token_ids
                         question_length = length
@@ -245,11 +225,7 @@ class LXMERTOracleDataset(Dataset):
                             object_category = o['category_id']
                             break
 
-                    #Resplace '?' by '.'
-                    question = list(map(lambda x: x if x!=12 else 515,question))
-                    
                     oracle_data[_id]                = dict()
-                    oracle_data[_id]['qid']         = qa['id']
                     oracle_data[_id]['question']    = question
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
@@ -260,7 +236,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]["history_raw"] = qa["question"].strip().lower()
                     oracle_data[_id]["target_bbox"] = target_bbox
 
-                    prev_ques = copy.deepcopy(prev_ques+q_token_ids)
+                    prev_ques = copy.deepcopy(q_token_ids)
                     prev_answer = [copy.deepcopy(a_token)]
                     prev_length = length+1
 
@@ -350,35 +326,12 @@ class LXMERTOracleDataset(Dataset):
 
                     length = len(q_token_ids)
 
-                    #Postive History
                     if self.history:
-
-                        true_flag = 1
-                        if len(prev_answer)>0:
-                            true_flag = (prev_answer[0]==1)
-
-                        #I only add postive answered questions
-                        if true_flag:
-                            question = prev_ques+prev_answer+q_token_ids
-                        else:
-                            
-                            #Resplace '?' by '.'
-                            prev_ques = list(map(lambda x: x if x!=12 else 515,question))
-
-                            prev_ques = prev_ques[:(-prev_length+1)]
-                            question = prev_ques+prev_answer+q_token_ids
-
-                        #If dialog got bigger than limit, only take first questions
-                        if len(question) > self.max_diag_len:
-                            current_ans_length = length
-                            can_add = self.max_diag_len - current_ans_length
-                            question = question[:can_add]+question[-current_ans_length:]
-
-                        question_length = len(question)
+                        question = prev_ques+prev_answer+q_token_ids
+                        question_length = prev_length+length
                     else:
                         question = q_token_ids
                         question_length = length
-
 
                     if self.history:
                         question.extend([self.word2i['<padding>']] * (self.max_diag_len - len(question)))
@@ -393,8 +346,8 @@ class LXMERTOracleDataset(Dataset):
                             spatial = get_spatial_feat(bbox=target_bbox, im_width=game['image']['width'], im_height=game['image']['height'])
                             object_category = o['category_id']
                             break
+
                     oracle_data[_id]                = dict()
-                    oracle_data[_id]['qid']         = qa['id']
                     oracle_data[_id]['question']    = question
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
@@ -405,7 +358,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]["history_raw"] = qa["question"].strip().lower()
                     oracle_data[_id]["target_bbox"] = target_bbox
 
-                    prev_ques = copy.deepcopy(prev_ques+q_token_ids)
+                    prev_ques = copy.deepcopy(q_token_ids)
                     prev_answer = [copy.deepcopy(a_token)]
                     prev_length = length+1
 
