@@ -43,7 +43,7 @@
     "new_oracle_data": false,
     "new_vocab": false,
     "successful_only": true,
-    "history": true
+    "history": false
   },
   "exp_config": {
     "name": "Oracle",

@@ -313,7 +313,7 @@ if __name__ == '__main__':
 
 
         print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f, Training Accuracy %.5f, Validation Accuracy %.5f"
-        %(args.exp_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss), train_accuracy, val_accuracy))
+        %(args.bin_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss), train_accuracy, val_accuracy))
 
         if exp_config['logging']:
             writer.add_scalar("Training/Epoch Loss", torch.mean(train_loss), epoch)

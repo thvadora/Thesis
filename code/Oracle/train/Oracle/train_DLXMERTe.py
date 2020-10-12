@@ -28,13 +28,15 @@ use_cuda = torch.cuda.is_available()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
+    parser.add_argument("-save_in", type=str, default="bin/Oracle", help='Data Directory')
+    parser.add_argument("-bin_name", type=str, default="dlxmerte", help='Data Directory')
     args = parser.parse_args()
     
     #hiperparametros lr, dropout, batch_size, epochs
-    epochs = 1
-    lr = 0.001
+    epochs = 20
+    lr = 0.00001
     dropout = 0
-    batch_size = 1
+    batch_size = 32
     lstm_hidden = 6
     lstm_layers = 6
 
@@ -93,13 +95,14 @@ if __name__ == "__main__":
             train_loss = torch.FloatTensor()
             val_loss = torch.FloatTensor()
 
-        for split, dataset in zip(['train, val'], [dataset_train, dataset_validation]):
+        for split, dataset in zip(['train', 'val'], [dataset_train, dataset_validation]):
             accuracy = []
-
+            print(split)
             dataloader = DataLoader(
                 dataset=dataset,
                 batch_size=batch_size,
-
+                shuffle=True,
+                drop_last=True,
                 num_workers=0 if sys.gettrace() else 4,
                 pin_memory=use_cuda
             )
@@ -115,14 +118,13 @@ if __name__ == "__main__":
                 encodings = batch[0]
                 answers = torch.reshape(batch[1], (batch_size, 16))
                 output = model(Variable(encodings))
-                print(output)
-                print(output.size(), answers.size())
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
 
                 #accuracy.append()
                 
-                #stream.set_description("Train accuracy: {}".format(np.round(np.mean(accuracy), 2)))
-                #stream.refresh()  # to show immediately the update
+                if i_batch%100==0:
+                    stream.set_description("{} Loss: {}".format(split, loss.item()))
+                stream.refresh()  # to show immediately the update
                 
                 if split == 'train':
                     # Backprop and parameter update
@@ -132,9 +134,12 @@ if __name__ == "__main__":
                     train_loss = torch.cat([train_loss, loss.data])
 
                 else:
-                    val_loss = torch.cat([val_loss, loss.data]) 
+                    val_loss = torch.cat([val_loss, loss.data])
 
-                break
+        torch.save(model.state_dict(), os.path.join(args.save_in, ''.join(['oracle', args.bin_name, str(epoch)])))
+        print("saving ", os.path.join(args.save_in, ''.join(['oracle', args.bin_name, str(epoch)])))
+
+        print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f"%(args.bin_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss)))
 
 
 

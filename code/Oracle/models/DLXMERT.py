@@ -20,11 +20,11 @@ class DLXMERTe(nn.Module):
                             hidden_size=hidden_size,
                             num_layers=num_layers,
                             dropout=dropout)
-        self.lstm.flatten_parameters()
         self.hidden2ans = nn.Linear(hidden_size, 3)
         self.sftmx = nn.Softmax(dim=2)
 
     def forward(self, encoded_dialog):
+        self.lstm.flatten_parameters()
         output, (h_n, c_n)  = self.lstm(encoded_dialog)
         to = self.hidden2ans(output)
         out = self.sftmx(to)

@@ -63,8 +63,7 @@ if __name__ == '__main__':
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
     parser.add_argument("--preloaded", type=bool, default=False)
     parser.add_argument("-load_bin_path", type=str)
-    parser.add_argument("-case", type=bool, default=False)
-    parser.add_argument("--modelname", type=str)
+    parser.add_argument("-case", type=bool, default=True)
 
 
     args = parser.parse_args()
@@ -156,21 +155,6 @@ if __name__ == '__main__':
     vocab_size = len(word2i)
 
     # Init Model, Loss Function and Optimizer
-    model = LXMERTOracleInputTarget(
-        no_words            = vocab_size,
-        no_words_feat       = embedding_config['no_words_feat'],
-        no_categories       = embedding_config['no_categories'],
-        no_category_feat    = embedding_config['no_category_feat'],
-        no_hidden_encoder   = lstm_config['no_hidden_encoder'],
-        mlp_layer_sizes     = mlp_config['layer_sizes'],
-        no_visual_feat      = inputs_config['no_visual_feat'],
-        no_crop_feat        = inputs_config['no_crop_feat'],
-        dropout             = lstm_config['dropout'],
-        inputs_config       = inputs_config,
-        scale_visual_to     = inputs_config['scale_visual_to'],
-        lxmert_encoder_args = inputs_config["LXRTEncoder"]
-    )
-    model = load_model(model, args.load_bin_path, use_dataparallel=exp_config["use_cuda"])
 
     dataset_test = LXMERTOracleDataset(
         data_dir            = args.data_dir,
@@ -191,18 +175,15 @@ if __name__ == '__main__':
         only_location=False
     )
 
-    accuracy = []
-
     dataloader = DataLoader(
-        dataset=dataset_test,
-        batch_size=optimizer_config['batch_size'],
-        shuffle=False,
-        num_workers=0 if sys.gettrace() else 4,
-        pin_memory=exp_config['use_cuda']
+    dataset=dataset_test,
+    batch_size=1,
+    shuffle=False,
+    num_workers=0 if sys.gettrace() else 4,
+    pin_memory=exp_config['use_cuda']
     )
 
     torch.set_grad_enabled(False)
-    model.eval()
 
     ans2tok = {'Yes': 1,
                'No': 0,
@@ -213,77 +194,24 @@ if __name__ == '__main__':
     pos = 0
     did = 0
     last_game_id = None
-    fname = args.modelname+args.set+"predictions.csv"
-    with open(fname, mode="w") as out_file:
+    h = {}
+    with open("lxmert_"+args.set+"predictions.csv", mode="w") as out_file:
         writer = csv.writer(out_file)
-        writer.writerow(["Game ID", "Position", "qid", "Input", "GT Answer", "Model Answer"])
+        writer.writerow(["Game ID", "Position", "Image", "Question", "GT Answer", "Model Answer"])
         stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
         for i_batch, sample in stream:
             # Get Batch
             questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
                 sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
-            # Forward pass
-            history_raw = sample["history_raw"]
-            fasterrcnn_features = sample['FasterRCNN']['features']
-            fasterrcnn_boxes = sample['FasterRCNN']['boxes']
-            #print("before: ", len(history_raw), len(fasterrcnn_features), len(fasterrcnn_boxes))
-            pred_answer = model(Variable(questions),
-                Variable(obj_categories),
-                Variable(spatials),
-                Variable(crop_features),
-                Variable(visual_features),
-                Variable(lengths),
-                sample["history_raw"],
-                sample['FasterRCNN']['features'], #problem of dimensions
-                sample['FasterRCNN']['boxes'],
-                sample["target_bbox"],
-                Variable(sample['train_features']['input_ids']),
-                Variable(sample['train_features']['input_mask']),
-                Variable(sample['train_features']['segment_ids'])
-            )
-            # Calculate Accuracy
-            accuracy.extend(calculate_accuracy_oracle_all(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))
+            q = questions[0]
+            p = 0
+            for tok in q:
+                if tok == 0:
+                    break
+                p += 1
+            try:
+                h[p] += 1
+            except:
+                h[p] = 1 
 
-            stream.set_description("Accuracy: {}".format(np.round(np.mean(accuracy), 2)))
-            stream.refresh()  # to show immediately the update
-
-            if i_batch == 0:
-                last_game_id = sample["game_id"][0]
-
-            pred_answer_topk = pred_answer.topk(1)[1]
-
-            for i in range(questions.shape[0]):
-                question_raw = " ".join([i2word[str(idx.item())] for idx in questions[i] if idx.item() != 0])
-                answer_raw = tok2ans[answers[i].item()]
-                pred_answer_raw = tok2ans[pred_answer_topk[i].item()]
-                game_id = sample["game_id"][i]
-                qid = sample["qid"][i].item()
-
-                if last_game_id != game_id:
-                    last_game_id = game_id
-                    pos = 0
-
-                writer.writerow(
-                    [
-                        game_id,
-                        pos,
-                        qid,
-                        question_raw,
-                        answer_raw,
-                        pred_answer_raw
-                    ]
-                )
-
-                pos += 1
-
-        print("Accuracy: {}".format(np.mean(accuracy)))
-
-    if args.add_bycat:
-        compute_bycategory(fname)
-    
-    if args.case:
-        cases = [9991, 10582, 15377, 16730, 26043, 30823, 35257, 44834, 45595, 51823, 52488, 60777, 68445]
-        data = pd.read_csv('lxmert_scratch_small_predictions.csv')
-        for c in cases:
-            print(data.loc[data['Game ID'] == c, ['Game ID', 'Question', 'GT Answer', 'Model Answer']])
-    
+    print(h)

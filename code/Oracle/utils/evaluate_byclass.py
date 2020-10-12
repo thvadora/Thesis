@@ -90,15 +90,13 @@ def count_and_rate(game, q_max_miss=0):
 
     return (attributes, entities, na_type)
 
-def compute_bycategory(filename="lxmert_scratch_small_predictions.csv"):
+def compute_bycategory(filename):
 
 
     print("Calculating Accuracy per category...")
     print("Getting DATA..")
     #TODO VARIABLE PATH
     data = pd.read_csv(os.path.join(os.getcwd(),filename))
-    data = data.drop('Image',axis=1)
-    #print(data.head())
 
     d = {}
     ID = -1
@@ -109,7 +107,7 @@ def compute_bycategory(filename="lxmert_scratch_small_predictions.csv"):
                 d[str(ID)] = push
                 push = {"qas" : []}
             ID = row['Game ID']
-        question = row["Question"].split('?')
+        question = row["Input"].split('.')
         if question[-1] == "":
             question = question[-2]
         else:

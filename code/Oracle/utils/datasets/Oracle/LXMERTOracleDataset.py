@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import json
 import h5py
@@ -57,7 +58,7 @@ class LXMERTOracleDataset(Dataset):
         self.load_crops = load_crops
 
         if self.history:
-            self.max_diag_len = self.max_src_length*2+1
+            self.max_diag_len = self.max_src_length*10+1
         else:
             self.max_diag_len = None
 
@@ -98,7 +99,7 @@ class LXMERTOracleDataset(Dataset):
                 self.oracle_data = self.new_oracle_data()
         else:
             print("reading", os.path.join(self.data_dir, self.data_file_name))
-            with open(os.path.join(self.data_dir, self.data_file_name), 'r') as file:
+            with open(os.path.join(self.data_dir, self.data_file_name), 'r', encoding="utf-8") as file:
                 self.oracle_data = json.load(file)
         for k in self.oracle_data:
             self.oracle_data[k]["FasterRCNN"] = imgid2fasterRCNNfeatures[self.oracle_data[k]["image_file"].split(".")[0]]
@@ -399,6 +400,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
                     oracle_data[_id]['image_file']  = game['image']['file_name']
+                    oracle_data[_id]['flickr']      = game['image']['flickr_url']
                     oracle_data[_id]['spatial']     = spatial
                     oracle_data[_id]['game_id']     = str(game['id'])
                     oracle_data[_id]['obj_cat']     = object_category

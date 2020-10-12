@@ -30,7 +30,7 @@ class qclass():
 
         self.attribute_tokens=[]
 
-        word_annotation = '/home/cp2020/cp202002/Thesis/code/Oracle/question_analysis/analysis_data/mod_word_annotation'
+        word_annotation = '/users/tvadora/Thesis/code/Oracle/question_analysis/analysis_data/mod_word_annotation'
 
         with open(word_annotation) as f:
             lines = f.readlines()
