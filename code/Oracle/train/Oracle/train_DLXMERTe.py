@@ -24,6 +24,23 @@ from utils.vocab import create_vocab
 
 use_cuda = torch.cuda.is_available()
 
+def calculate_accuracy_oracle(predictions, targets):
+    """
+    :param prediction: NxCxdialogsize
+    :param targets: N
+    """
+    if isinstance(predictions, Variable):
+        predictions = predictions.data
+    if isinstance(targets, Variable):
+        targets = targets.data
+    #print(predictions)
+    #print(targets)
+    predicted_classes = predictions.topk(1,dim=1)[1]
+    accuracy = (torch.eq(predicted_classes.squeeze(1), targets).sum().item())/(targets.size(0)*targets.size(1))
+    #print(torch.eq(predicted_classes.squeeze(1), targets))
+    #print(torch.eq(predicted_classes.squeeze(1), targets).size())
+    return accuracy
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -97,7 +114,7 @@ if __name__ == "__main__":
 
         for split, dataset in zip(['train', 'val'], [dataset_train, dataset_validation]):
             accuracy = []
-            print(split)
+            #print(split)
             dataloader = DataLoader(
                 dataset=dataset,
                 batch_size=batch_size,
@@ -120,10 +137,9 @@ if __name__ == "__main__":
                 output = model(Variable(encodings))
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
 
-                #accuracy.append()
+                accuracy.append(calculate_accuracy_oracle(output, answers.cuda() if use_cuda else answers))
                 
-                if i_batch%100==0:
-                    stream.set_description("{} Loss: {}".format(split, loss.item()))
+                stream.set_description("Train accuracy: {}".format(np.round(np.mean(accuracy), 2)))
                 stream.refresh()  # to show immediately the update
                 
                 if split == 'train':
@@ -132,14 +148,19 @@ if __name__ == "__main__":
                     loss.backward()
                     optimizer.step()
                     train_loss = torch.cat([train_loss, loss.data])
-
                 else:
                     val_loss = torch.cat([val_loss, loss.data])
+
+            if split == 'train':
+                train_accuracy = np.mean(accuracy)
+            elif split == 'val':
+                val_accuracy = np.mean(accuracy)
 
         torch.save(model.state_dict(), os.path.join(args.save_in, ''.join(['oracle', args.bin_name, str(epoch)])))
         print("saving ", os.path.join(args.save_in, ''.join(['oracle', args.bin_name, str(epoch)])))
 
-        print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f"%(args.bin_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss)))
+        print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f, Training Accuracy %.5f, Validation Accuracy %.5f"
+        %(args.bin_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss), train_accuracy, val_accuracy))
 
 
 
