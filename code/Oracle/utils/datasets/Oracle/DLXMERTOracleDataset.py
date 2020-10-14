@@ -48,6 +48,7 @@ class DLXMERTOracleDataset(Dataset):
         data = self.gw[idx]
         amount = self.turns
         dialog = data['qas']
+        gameid = int(data['id'])
         lxmertout = np.zeros(shape=(amount, 768), dtype=np.float32)
         ans = np.zeros(shape=(amount), dtype=np.longlong)
         ans2tok = {
@@ -62,7 +63,7 @@ class DLXMERTOracleDataset(Dataset):
             position = self.qid2pos[str(qid)]
             lxmertout[index] = self.encoding[position]
             ans[index] = ans2tok[turn['answer']]
-        return lxmertout, ans
+        return lxmertout, (ans, gameid)
 
 
 if __name__ == '__main__':

@@ -132,6 +132,7 @@ class LXMERTOracleDataset(Dataset):
                 'length': self.oracle_data[idx]['length'],
                 'game_id': self.oracle_data[idx]['game_id'],
                 'qid' : self.oracle_data[idx]['qid'],
+                'flickr' : self.oracle_data[idx]['flickr'],
                 "history_raw": self.oracle_data[idx]["history_raw"],
                 "unnormalized_target_bbox": np.asarray(self.oracle_data[idx]["target_bbox"], dtype=np.float32)
                 }
@@ -255,6 +256,7 @@ class LXMERTOracleDataset(Dataset):
                     oracle_data[_id]['length']      = question_length
                     oracle_data[_id]['answer']      = a_token
                     oracle_data[_id]['image_file']  = game['image']['file_name']
+                    oracle_data[_id]['flickr']      = game['image']['flickr_url']
                     oracle_data[_id]['spatial']     = spatial
                     oracle_data[_id]['game_id']     = str(game['id'])
                     oracle_data[_id]['obj_cat']     = object_category
@@ -274,7 +276,7 @@ class LXMERTOracleDataset(Dataset):
 
         print('done')
 
-        with open(oracle_data_path, 'r') as file:
+        with open(oracle_data_path, 'r', encoding="utf-8") as file:
             oracle_data = json.load(file)
 
         return oracle_data

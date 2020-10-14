@@ -133,7 +133,7 @@ if __name__ == "__main__":
             stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
             for i_batch, batch in stream:
                 encodings = batch[0]
-                answers = torch.reshape(batch[1], (batch_size, 16))
+                answers = torch.reshape(batch[1][0], (batch_size, 16))
                 output = model(Variable(encodings))
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
 
@@ -161,75 +161,3 @@ if __name__ == "__main__":
 
         print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f, Training Accuracy %.5f, Validation Accuracy %.5f"
         %(args.bin_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss), train_accuracy, val_accuracy))
-
-
-
-
-"""
-                # Calculate Loss
-                loss = loss_function(pred_answer, Variable(answers).cuda() if exp_config['use_cuda'] else Variable(answers)).unsqueeze(0)
-
-                # Calculate Accuracy
-                accuracy.append(calculate_accuracy_oracle(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))
-
-                stream.set_description("Train accuracy: {}".format(np.round(np.mean(accuracy), 2)))
-                stream.refresh()  # to show immediately the update
-
-                if split == 'train':
-                    # Backprop and parameter update
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                    train_loss = torch.cat([train_loss, loss.data])
-
-                else:
-                    val_loss = torch.cat([val_loss, loss.data])
-
-                # bookkeeping
-                if split == 'train' and exp_config['logging']:
-                    writer.add_scalar("Training/Batch Accuracy", accuracy[-1], train_batch_out)
-                    writer.add_scalar("Training/Batch Loss", loss.data[0], train_batch_out)
-
-                    train_batch_out += 1
-
-                    if i_batch == 0:
-                        for name, param in model.named_parameters():
-                            writer.add_histogram("OracleParams/Oracle_" + name, param.data, epoch, bins='auto')
-
-                        if epoch > 0 and epoch%5 == 0:
-                            labels = list(OrderedDict(sorted({int(k):v for k,v in i2word.items()}.items())).values())
-                            writer.add_embedding(model.module.word_embeddings.weight.data, metadata=labels, tag='oracle word embedding', global_step=int(epoch/5))
-
-                        if epoch == 0:
-                            writer.add_graph(model, pred_answer)
-
-
-                elif split == 'val' and exp_config['logging']:
-                    writer.add_scalar("Validation/Batch Accurarcy", accuracy[-1], valid_batch_out)
-                    writer.add_scalar("Validation/Batch Loss", loss.data[0], valid_batch_out)
-                    valid_batch_out += 1
-
-            # bookkeeping
-            if split == 'train':
-                train_accuracy = np.mean(accuracy)
-            elif split == 'val':
-                val_accuracy = np.mean(accuracy)
-
-
-        if exp_config['save_models']:
-            if not os.path.exists(exp_config['save_models_path']):
-                os.makedirs(exp_config['save_models_path'])
-            torch.save(model.state_dict(), os.path.join(exp_config['save_models_path'], ''.join(['oracle', args.bin_name, exp_config['ts'], str(epoch)])))
-            print("saving ", os.path.join(exp_config['save_models_path'], ''.join(['oracle', args.bin_name, exp_config['ts'], str(epoch)])))
-
-
-        print("%s, Epoch %03d, Time taken %.2f, Training-Loss %.5f, Validation-Loss %.5f, Training Accuracy %.5f, Validation Accuracy %.5f"
-        %(args.exp_name, epoch, time()-start, torch.mean(train_loss), torch.mean(val_loss), train_accuracy, val_accuracy))
-
-        if exp_config['logging']:
-            writer.add_scalar("Training/Epoch Loss", torch.mean(train_loss), epoch)
-            writer.add_scalar("Training/Epoch Accuracy", train_accuracy, epoch)
-
-            writer.add_scalar("Validation/Epoch Loss", torch.mean(val_loss), epoch)
-            writer.add_scalar("Validation/Epoch Accuracy", val_accuracy, epoch)
-"""

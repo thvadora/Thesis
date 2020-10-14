@@ -2,24 +2,28 @@ import argparse
 import csv
 import datetime
 import json
+import os
 import sys
+from collections import defaultdict
 from time import time
 
+import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
 import torch
 import tqdm
+import wget
 from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
+from lxmert.src.lxrt.tokenization import BertTokenizer
 from models.LXMERTOracleInputTarget import LXMERTOracleInputTarget
 from utils.config import load_config
 from utils.datasets.Oracle.LXMERTOracleDataset import LXMERTOracleDataset
 from utils.model_loading import load_model
 from utils.vocab import create_vocab
-from utils.evaluate_byclass import compute_bycategory
 
 
 def calculate_accuracy_oracle(predictions, targets):
@@ -33,8 +37,9 @@ def calculate_accuracy_oracle(predictions, targets):
         targets = targets.data
 
     predicted_classes = predictions.topk(1)[1]
-    accuracy = torch.eq(predicted_classes.squeeze(1), targets).sum().item()/targets.size(0)
+    accuracy = torch.eq(predicted_classes.squeeze(1), targets).sum().item() / targets.size(0)
     return accuracy
+
 
 def calculate_accuracy_oracle_all(predictions, targets):
     """
@@ -52,20 +57,16 @@ def calculate_accuracy_oracle_all(predictions, targets):
         accuracies.append(accuracy.item())
     return accuracies
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
-    parser.add_argument("-config", type=str, default="small", help='Config [small or big]')
+    parser.add_argument("-config", type=str, default="small", help='Config type [big, small]')
     parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
-    parser.add_argument("-set", type=str, default="val", help='Select train, val o test')
-    parser.add_argument("-add_bycat", type=bool, default=True)
-    parser.add_argument("-exp_name", type=str, help='Experiment Name')
+    parser.add_argument("-exp_name", type=str, default="exp", help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
-    parser.add_argument("--preloaded", type=bool, default=False)
     parser.add_argument("-load_bin_path", type=str)
-    parser.add_argument("-case", type=bool, default=False)
-    parser.add_argument("--modelname", type=str)
-
+    parser.add_argument("-set", type=str, default="val")
 
     args = parser.parse_args()
     config_file = 'config/Oracle/config_small.json'
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     torch.manual_seed(exp_config['seed'])
     if exp_config['use_cuda']:
         torch.cuda.manual_seed_all(exp_config['seed'])
-        
+
     if exp_config['logging']:
         exp_config['name'] = args.exp_name
         if not os.path.exists(exp_config["tb_logdir"] + "oracle_" + exp_config["name"]):
@@ -93,14 +94,14 @@ if __name__ == '__main__':
         train_batch_out = 0
         valid_batch_out = 0
 
-    # Hyperparamters
-    data_paths          = config['data_paths']
-    optimizer_config    = config['optimizer']
-    embedding_config    = config['embeddings']
-    lstm_config         = config['lstm']
-    mlp_config          = config['mlp']
-    dataset_config      = config['dataset']
-    inputs_config       = config['inputs']
+    # Hyperparameters
+    data_paths = config['data_paths']
+    optimizer_config = config['optimizer']
+    embedding_config = config['embeddings']
+    lstm_config = config['lstm']
+    mlp_config = config['mlp']
+    dataset_config = config['dataset']
+    inputs_config = config['inputs']
 
     print("Loading MSCOCO bottomup index from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_index"]))
     with open(data_paths["FasterRCNN"]["mscoco_bottomup_index"]) as in_file:
@@ -111,23 +112,10 @@ if __name__ == '__main__':
         img_w = mscoco_bottomup_index["img_w"]
 
     print("Loading MSCOCO bottomup features from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_features"]))
-    mscoco_bottomup_features = None
-    if args.preloaded:
-        import sharearray
-        print("Loading preloaded MS-COCO Bottom-Up features")
-        mscoco_bottomup_features = sharearray.cache("mscoco_vectorized_features", lambda: None)
-        mscoco_bottomup_features = np.array(mscoco_bottomup_features)
-    else:
-        mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
+    mscoco_bottomup_features = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_features"])
 
     print("Loading MSCOCO bottomup boxes from: {}".format(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"]))
-    mscoco_bottomup_boxes = None
-    if args.preloaded:
-        print("Loading preloaded MS-COCO Bottom-Up boxes")
-        mscoco_bottomup_boxes = sharearray.cache("mscoco_vectorized_boxes", lambda: None)
-        mscoco_bottomup_boxes = np.array(mscoco_bottomup_boxes)
-    else:
-        mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
+    mscoco_bottomup_boxes = np.load(data_paths["FasterRCNN"]["mscoco_bottomup_boxes"])
 
     imgid2fasterRCNNfeatures = {}
     for mscoco_id, mscoco_pos in image_id2image_pos.items():
@@ -143,13 +131,14 @@ if __name__ == '__main__':
             data_file=data_paths['train_file'],
             min_occ=dataset_config['min_occ'])
 
-    print("Bert tokenizer or standard vocab?")
+    ans2tok = {'Yes': 1,
+               'No': 0,
+               'N/A': 2}
+
+    tok2ans = {v: k for k, v in ans2tok.items()}
 
     with open(os.path.join(args.data_dir, data_paths['vocab_file'])) as file:
         vocab = json.load(file)
-
-    # with open('./data/vocab_bert_tok.json') as file:
-    #     vocab = json.load(file)
 
     word2i = vocab['word2i']
     i2word = vocab['i2word']
@@ -191,6 +180,7 @@ if __name__ == '__main__':
         only_location=False
     )
 
+
     accuracy = []
 
     dataloader = DataLoader(
@@ -210,24 +200,48 @@ if __name__ == '__main__':
 
     tok2ans = {v: k for k, v in ans2tok.items()}
 
+    tokenizer = BertTokenizer.from_pretrained(
+        "bert-base-uncased",
+        do_lower_case=True
+    )
+
+    plt.rcParams['figure.figsize'] = (12, 10)
+
+    annotations = {}
+    aux = pd.read_csv(os.path.join(args.data_dir, "locationq_classification_"+args.set+".csv"))
+    for index, row in aux.iterrows():
+        annotations[(int(row['game_id']), int(row['dial_pos']))] = row
+    """with open(os.path.join(args.data_dir, "locationq_classification_"+args.set+".csv")) as in_file:
+        reader = csv.reader(in_file)
+        for row in reader:
+            annotations[(row['game_id'], row['dial_pos'])] = row"""
+
+    annotations_absolute = {}
+    aux = pd.read_csv(os.path.join(args.data_dir, "absolute_only_"+args.set+".csv"))
+    for index, row in aux.iterrows():
+        annotations_absolute[(int(row['game_id']), int(row['dial_pos']))] = row
+    """with open(os.path.join(args.data_dir, "absolute_only_"+args.set+".csv")) as in_file:
+        reader = csv.reader(in_file)
+        for row in reader:
+            annotations_absolute[(row['game_id'], row['dial_pos'])] = row"""
+
+    num_locations = 0
+    num_q = defaultdict(int)
+    selected_items = defaultdict(int)
+    selected_items[(2731, 5)] = 1
+    selected_items[(2731, 6)] = 1
+
     pos = 0
-    did = 0
     last_game_id = None
-    fname = args.modelname+args.set+"predictions.csv"
-    with open(fname, mode="w") as out_file:
-        writer = csv.writer(out_file)
-        writer.writerow(["Game ID", "Position", "qid", "Input", "GT Answer", "Model Answer"])
-        stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
-        for i_batch, sample in stream:
-            # Get Batch
-            questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
-                sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], sample['obj_cat'], sample['length']
-            # Forward pass
-            history_raw = sample["history_raw"]
-            fasterrcnn_features = sample['FasterRCNN']['features']
-            fasterrcnn_boxes = sample['FasterRCNN']['boxes']
-            #print("before: ", len(history_raw), len(fasterrcnn_features), len(fasterrcnn_boxes))
-            pred_answer = model(Variable(questions),
+    stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
+    did = 0
+    for i_batch, sample in stream:
+        questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
+            sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], \
+            sample['obj_cat'], sample['length']
+
+        # Forward pass
+        pred_answer = model(Variable(questions),
                 Variable(obj_categories),
                 Variable(spatials),
                 Variable(crop_features),
@@ -241,49 +255,101 @@ if __name__ == '__main__':
                 Variable(sample['train_features']['input_mask']),
                 Variable(sample['train_features']['segment_ids'])
             )
-            # Calculate Accuracy
-            accuracy.extend(calculate_accuracy_oracle_all(pred_answer, answers.cuda() if exp_config['use_cuda'] else answers))
 
-            stream.set_description("Accuracy: {}".format(np.round(np.mean(accuracy), 2)))
-            stream.refresh()  # to show immediately the update
+        if i_batch == 0:
+            last_game_id = sample["game_id"][0]
 
-            if i_batch == 0:
-                last_game_id = sample["game_id"][0]
+        pred_answer_topk = pred_answer.topk(1)[1]
 
-            pred_answer_topk = pred_answer.topk(1)[1]
+        for datapoint in range(len(sample["game_id"])):
+            game_id = sample["game_id"][datapoint]
+            if last_game_id != game_id:
+                last_game_id = game_id
+                pos = 0
 
-            for i in range(questions.shape[0]):
-                question_raw = " ".join([i2word[str(idx.item())] for idx in questions[i] if idx.item() != 0])
-                answer_raw = tok2ans[answers[i].item()]
-                pred_answer_raw = tok2ans[pred_answer_topk[i].item()]
-                game_id = sample["game_id"][i]
-                qid = sample["qid"][i].item()
+            if (int(game_id), int(pos)) not in selected_items:
+                pos += 1
+                continue
 
-                if last_game_id != game_id:
-                    last_game_id = game_id
-                    pos = 0
+            predictions_annotations = annotations[(int(game_id), int(pos))]
+            relation_type = predictions_annotations['location_type']
 
-                writer.writerow(
-                    [
-                        game_id,
-                        pos,
-                        qid,
-                        question_raw,
-                        answer_raw,
-                        pred_answer_raw
-                    ]
+            if predictions_annotations['cat'] != "['<spatial>']":
+                pos += 1
+                continue
+
+            if relation_type == "absolute":
+                absolute_annotations = annotations_absolute[(int(game_id), int(pos))]
+                if absolute_annotations['is_true_absolute'] == "False":
+                    pos += 1
+                    continue
+
+            num_q[relation_type] += 1
+            num_locations += 1
+
+            #print(model)
+            for layer in range(5):
+                lang2vis_attention_probs = model.module.lxrt_encoder.model.bert.encoder.x_layers[
+                    layer].lang_att_map[datapoint].detach().cpu().numpy()
+
+                vis2lang_attention_probs = model.module.lxrt_encoder.model.bert.encoder.x_layers[
+                    layer].visn_att_map[datapoint].detach().cpu().numpy()
+
+                lang2vis_attention_probs = np.mean(lang2vis_attention_probs, axis=0)
+                vis2lang_attention_probs = np.mean(vis2lang_attention_probs, axis=0)
+
+                lang2vis_max_regions = np.argsort(lang2vis_attention_probs[0])[-5:][::-1]
+
+                plt.clf()
+
+                plt.gca().set_axis_off()
+                img_fname = wget.download(sample['flickr'][datapoint])
+                os.rename(img_fname, os.path.join('./cachedimgs', sample['image_file'][datapoint]))
+                im = cv2.imread(
+                    os.path.join(os.path.join('./cachedimgs', sample['image_file'][datapoint])))
+                im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+                plt.imshow(im)
+
+                for i, bbox in enumerate(sample["FasterRCNN"]["unnormalized_boxes"][datapoint][:35]):
+                    if i in lang2vis_max_regions:
+                        bbox = [bbox[0].item(), bbox[1].item(), bbox[2].item(), bbox[3].item()]
+
+                        if bbox[0] == 0:
+                            bbox[0] = 2
+                        if bbox[1] == 0:
+                            bbox[1] = 2
+
+                        plt.gca().add_patch(
+                            plt.Rectangle((bbox[0], bbox[1]),
+                                          bbox[2] - bbox[0] - 4,
+                                          bbox[3] - bbox[1] - 4, fill=False,
+                                          edgecolor='red', linewidth=2)
+                        )
+
+                target_bbox = sample["unnormalized_target_bbox"][datapoint]
+
+                plt.gca().add_patch(
+                    plt.Rectangle((target_bbox[0], target_bbox[1]),
+                                  target_bbox[2],
+                                  target_bbox[3], fill=False,
+                                  edgecolor='green', linewidth=2)
                 )
 
-                pos += 1
+                tokenized_history = tokenizer.tokenize(sample["history_raw"][datapoint])
+                tokenized_history = ["<CLS>"] + tokenized_history + ["<SEP>"]
 
-        print("Accuracy: {}".format(np.mean(accuracy)))
+                plt.tight_layout()
 
-    if args.add_bycat:
-        compute_bycategory(fname)
-    
-    if args.case:
-        cases = [9991, 10582, 15377, 16730, 26043, 30823, 35257, 44834, 45595, 51823, 52488, 60777, 68445]
-        data = pd.read_csv('lxmert_scratch_small_predictions.csv')
-        for c in cases:
-            print(data.loc[data['Game ID'] == c, ['Game ID', 'Question', 'GT Answer', 'Model Answer']])
-    
+                predictions_annotations = annotations[(int(game_id), int(pos))]
+                relation_type = predictions_annotations['location_type']
+                plt.savefig(
+                    "att_visualizations/lang2vis_game_{}_turn_{}_layer_{}_type_{}_question_{}_answer_{}.png".format(
+                        sample["game_id"][datapoint], pos, layer, relation_type, " ".join(tokenized_history),
+                        tok2ans[sample["answer"][datapoint].item()].replace("/", "_")), bbox_inches='tight', pad_inches=0.5)
+                """plt.savefig(
+                    "att_visualizations/lang2vis_game_{}_turn_{}_layer_{}_type_{}_question_{}_answer_{}.pdf".format(
+                        sample["game_id"][datapoint], pos, layer, relation_type, " ".join(tokenized_history),
+                        tok2ans[sample["answer"][datapoint].item()].replace("/", "_")), bbox_inches='tight', pad_inches=0.5)"""
+                plt.close()
+            pos += 1
+        did += 1

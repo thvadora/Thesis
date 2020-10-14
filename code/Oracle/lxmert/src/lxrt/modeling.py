@@ -450,6 +450,8 @@ class LXRTXLayer(nn.Module):
         self.lang_output = BertOutput(config)
         self.visn_inter = BertIntermediate(config)
         self.visn_output = BertOutput(config)
+        self.lang_att_map = list()
+        self.visn_att_map = list()
 
     def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
         # Cross Attention
