@@ -63,7 +63,7 @@ class DLXMERTOracleDataset(Dataset):
             position = self.qid2pos[str(qid)]
             lxmertout[index] = self.encoding[position]
             ans[index] = ans2tok[turn['answer']]
-        return lxmertout, (ans, gameid)
+        return (torch.tensor(lxmertout), len(dialog)), (ans, gameid)
 
 
 if __name__ == '__main__':

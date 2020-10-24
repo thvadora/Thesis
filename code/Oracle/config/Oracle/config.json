@@ -35,7 +35,7 @@
   "optimizer": {
     "lr": 0.00001,
     "no_epochs": 15,
-    "batch_size": 32
+    "batch_size": 1
   },
   "dataset": {
     "max_src_length": 15,
@@ -43,7 +43,7 @@
     "new_oracle_data": false,
     "new_vocab": false,
     "successful_only": true,
-    "history": false
+    "history": true
   },
   "exp_config": {
     "name": "Oracle",

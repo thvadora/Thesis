@@ -76,14 +76,14 @@ def count_and_rate(game, q_max_miss=0):
         ques = attributes[qtype]
         qtype_count = len(ques)
         correct = sum([q['ans'] == q['model_ans'] for q in ques])
-        print('{}: {:.2f}'.format(qtype, correct/qtype_count*100))
+        print('{}: {:.2f}'.format(qtype, correct/qtype_count*100), ' Number of question of this category: ', qtype_count)
 
     print('Entities')
     for qtype in entities:
         ques = entities[qtype]
         qtype_count = len(ques)
         correct = sum([q['ans'] == q['model_ans'] for q in ques])
-        print('{}: {:.2f}'.format(qtype, correct/qtype_count*100))
+        print('{}: {:.2f}'.format(qtype, correct/qtype_count*100), ' Number of question of this category: ', qtype_count)
 
     correct = sum([q['ans'] == q['model_ans'] for q in na_type])
     print('NA: {:.2f}'.format(correct/len(na_type)*100))

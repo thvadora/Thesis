@@ -6,6 +6,7 @@ import os
 import sys
 from collections import defaultdict
 from time import time
+import seaborn as sn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -24,6 +25,8 @@ from utils.config import load_config
 from utils.datasets.Oracle.LXMERTOracleDataset import LXMERTOracleDataset
 from utils.model_loading import load_model
 from utils.vocab import create_vocab
+
+use_cuda = torch.cuda.is_available()
 
 
 def calculate_accuracy_oracle(predictions, targets):
@@ -79,7 +82,7 @@ if __name__ == '__main__':
     # Experiment Settings
     exp_config = config['exp_config']
     exp_config['img_feat'] = args.img_feat.lower()
-    exp_config['use_cuda'] = torch.cuda.is_available()
+    exp_config['use_cuda'] = use_cuda
     exp_config['ts'] = str(datetime.datetime.fromtimestamp(time()).strftime('%Y_%m_%d_%H_%M'))
 
     torch.manual_seed(exp_config['seed'])
@@ -227,9 +230,7 @@ if __name__ == '__main__':
 
     num_locations = 0
     num_q = defaultdict(int)
-    selected_items = defaultdict(int)
-    selected_items[(2731, 5)] = 1
-    selected_items[(2731, 6)] = 1
+    selected_items = list(annotations.keys())
 
     pos = 0
     last_game_id = None
@@ -287,6 +288,17 @@ if __name__ == '__main__':
             num_q[relation_type] += 1
             num_locations += 1
 
+            try:
+                img_fname = wget.download(sample['flickr'][datapoint])
+            except:
+                pos += 1
+                continue
+
+            os.rename(img_fname, os.path.join('./cachedimgs', sample['image_file'][datapoint]))
+            im = cv2.imread(
+                os.path.join(os.path.join('./cachedimgs', sample['image_file'][datapoint])))
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+
             #print(model)
             for layer in range(5):
                 lang2vis_attention_probs = model.module.lxrt_encoder.model.bert.encoder.x_layers[
@@ -300,14 +312,33 @@ if __name__ == '__main__':
 
                 lang2vis_max_regions = np.argsort(lang2vis_attention_probs[0])[-5:][::-1]
 
+                tokenized_history = tokenizer.tokenize(sample["history_raw"][datapoint])
+                tokenized_history = ["<CLS>"] + tokenized_history + ["<SEP>"]
+                lenofdialog = len(tokenized_history) 
+
+                df_cm = pd.DataFrame(lang2vis_attention_probs[:lenofdialog], index = tokenized_history)
+
+                fig = plt.figure(figsize=(30,6))
+
+                plt.clf()
+
+                ax = fig.add_subplot(111)
+                ax.set_aspect(1)
+
+                cmap = sn.cubehelix_palette(rot=-.4, light=1, as_cmap=True)
+
+                res = sn.heatmap(df_cm, annot=True, vmin=0.0, vmax=1.0, fmt='.2f', cmap=cmap, yticklabels=tokenized_history)
+
+                plt.savefig('att_maps/game_'+str(game_id)+'_turn_'+str(pos)+'_layer'+str(layer)+'.png')
+
+                plt.tight_layout()
+
+                plt.close()
+
                 plt.clf()
 
                 plt.gca().set_axis_off()
-                img_fname = wget.download(sample['flickr'][datapoint])
-                os.rename(img_fname, os.path.join('./cachedimgs', sample['image_file'][datapoint]))
-                im = cv2.imread(
-                    os.path.join(os.path.join('./cachedimgs', sample['image_file'][datapoint])))
-                im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        
                 plt.imshow(im)
 
                 for i, bbox in enumerate(sample["FasterRCNN"]["unnormalized_boxes"][datapoint][:35]):
@@ -325,6 +356,7 @@ if __name__ == '__main__':
                                           bbox[3] - bbox[1] - 4, fill=False,
                                           edgecolor='red', linewidth=2)
                         )
+                        plt.text(bbox[0], bbox[1], str(i), color='b', fontsize=20)
 
                 target_bbox = sample["unnormalized_target_bbox"][datapoint]
 
@@ -334,6 +366,7 @@ if __name__ == '__main__':
                                   target_bbox[3], fill=False,
                                   edgecolor='green', linewidth=2)
                 )
+                plt.text(target_bbox[0], target_bbox[1], '35', color='g', fontsize=20)
 
                 tokenized_history = tokenizer.tokenize(sample["history_raw"][datapoint])
                 tokenized_history = ["<CLS>"] + tokenized_history + ["<SEP>"]
@@ -344,7 +377,7 @@ if __name__ == '__main__':
                 relation_type = predictions_annotations['location_type']
                 plt.savefig(
                     "att_visualizations/lang2vis_game_{}_turn_{}_layer_{}_type_{}_question_{}_answer_{}.png".format(
-                        sample["game_id"][datapoint], pos, layer, relation_type, " ".join(tokenized_history),
+                        sample["game_id"][datapoint], pos, layer, relation_type, " ".join(tokenized_history).replace("/", "_"),
                         tok2ans[sample["answer"][datapoint].item()].replace("/", "_")), bbox_inches='tight', pad_inches=0.5)
                 """plt.savefig(
                     "att_visualizations/lang2vis_game_{}_turn_{}_layer_{}_type_{}_question_{}_answer_{}.pdf".format(
@@ -352,4 +385,3 @@ if __name__ == '__main__':
                         tok2ans[sample["answer"][datapoint].item()].replace("/", "_")), bbox_inches='tight', pad_inches=0.5)"""
                 plt.close()
             pos += 1
-        did += 1

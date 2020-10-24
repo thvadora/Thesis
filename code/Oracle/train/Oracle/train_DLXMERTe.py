@@ -15,6 +15,9 @@ from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torch.nn import DataParallel
 from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pack_padded_sequence
+from torch.nn.utils.rnn import pad_sequence
+
 
 from lxmert.src.lxrt.optimization import BertAdam
 from models.DLXMERT import DLXMERTe
@@ -24,7 +27,7 @@ from utils.vocab import create_vocab
 
 use_cuda = torch.cuda.is_available()
 
-def calculate_accuracy_oracle(predictions, targets):
+def calculate_accuracy_oracle(predictions, targets, lengths):
     """
     :param prediction: NxCxdialogsize
     :param targets: N
@@ -34,12 +37,16 @@ def calculate_accuracy_oracle(predictions, targets):
     if isinstance(targets, Variable):
         targets = targets.data
     #print(predictions)
-    #print(targets)
+    cant = torch.sum(lengths).item()
+    mask = torch.arange(lengths.size(0)).repeat((predictions.size()[0],1)) < lengths[:, None]
     predicted_classes = predictions.topk(1,dim=1)[1]
-    accuracy = (torch.eq(predicted_classes.squeeze(1), targets).sum().item())/(targets.size(0)*targets.size(1))
+    #print(predicted_classes.size())
+    #predicted_classes = torch.masked_select(predicted_classes, mask)
+    accuracy = (torch.eq(predicted_classes.squeeze(1), targets).sum().item())/cant
     #print(torch.eq(predicted_classes.squeeze(1), targets))
     #print(torch.eq(predicted_classes.squeeze(1), targets).size())
-    return accuracy
+    #return accuracy
+    return 1
 
 
 if __name__ == "__main__":
@@ -50,7 +57,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     #hiperparametros lr, dropout, batch_size, epochs
-    epochs = 20
+    epochs = 1
     lr = 0.00001
     dropout = 0
     batch_size = 32
@@ -132,12 +139,23 @@ if __name__ == "__main__":
 
             stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
             for i_batch, batch in stream:
-                encodings = batch[0]
+                encodings = batch[0][0]
+                lengths = batch[0][1]
+                print(encodings.size())
+                print(lengths)
+                # Los encodings ya vienen con padding (padding con vectores de 0). Ahora tenemos que empaquetarlo en 
+                # pytorch para que la red sepa que hay dialogos con menos de 16 turnos y solo backpropaguee
+                # en los dialogos y no en los paddings tambien. Pero aca es la parte que falla porque no puedo 
+                # hacer que pack_padded_sequence sepa que el padding son vectores de ceros. Cabe aclarar que arriba de la LSTM 
+                # tenemos una mini MLP para convertir losoutputs de la lstm para cada tiempo en un vector de 3 ocpiones (yes, no, n/a)
+                # asi arriba de eso hacer softmax, por eso mismo dentro del modelo, en la salida de la lstm se tiene que volver a 
+                # desempaquetar la sequencia.
+                encodings = pack_padded_sequence(encodings, lengths=lengths, batch_first=True)
                 answers = torch.reshape(batch[1][0], (batch_size, 16))
-                output = model(Variable(encodings))
+                output = model(encodings, lengths)
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
 
-                accuracy.append(calculate_accuracy_oracle(output, answers.cuda() if use_cuda else answers))
+                accuracy.append(calculate_accuracy_oracle(output, answers.cuda() if use_cuda else answers, lengths))
                 
                 stream.set_description("Train accuracy: {}".format(np.round(np.mean(accuracy), 2)))
                 stream.refresh()  # to show immediately the update
@@ -150,6 +168,7 @@ if __name__ == "__main__":
                     train_loss = torch.cat([train_loss, loss.data])
                 else:
                     val_loss = torch.cat([val_loss, loss.data])
+                break
 
             if split == 'train':
                 train_accuracy = np.mean(accuracy)

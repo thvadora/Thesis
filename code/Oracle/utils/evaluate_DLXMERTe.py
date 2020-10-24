@@ -16,6 +16,7 @@ from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torch.nn import DataParallel
 from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pack_padded_sequence
 
 from lxmert.src.lxrt.optimization import BertAdam
 from models.DLXMERT import DLXMERTe
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     #hiperparametros lr, dropout, batch_size, epochs
-    epochs = 20
+    epochs = 25
     lr = 0.00001
     dropout = 0
     batch_size = 32
@@ -112,11 +113,13 @@ if __name__ == "__main__":
 
     stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
     for i_batch, batch in stream:
-        encoding = batch[0]
+        encoding = batch[0][0]
+        length = batch[0][1]
+        #pencodings = pack_padded_sequence(encodings, lengths=lengths, batch_first=True, enforce_sorted=False)
+        output = model(encoding, length)
         dialogs = 0
         answers = torch.reshape(batch[1][0], (1, 16)).squeeze(0)
         gameid = batch[1][1][0]
-        output = model(Variable(encoding))
         predicted_classes = output.topk(1,dim=1)[1].squeeze(0).squeeze(0)
         dialog_tope = 0
         for index, x in enumerate(encoding[0]):
@@ -129,3 +132,4 @@ if __name__ == "__main__":
             if dialog_tope > 16:
                 print(">16")
     df.to_csv('dlxmert'+args.set+'predictions.csv')
+    #report accuray
