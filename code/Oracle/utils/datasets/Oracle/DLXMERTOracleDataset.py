@@ -50,12 +50,13 @@ class DLXMERTOracleDataset(Dataset):
         dialog = data['qas']
         gameid = int(data['id'])
         lxmertout = np.zeros(shape=(amount, 768), dtype=np.float32)
-        ans = np.zeros(shape=(amount), dtype=np.longlong)
+        ans = np.zeros(shape=(min(len(dialog),amount)), dtype=np.longlong)
         ans2tok = {
             'Yes' : 1,
             'No'  : 0,
             'N/A' : 2
         }
+        sz = 0
         for index, turn in enumerate(dialog):
             if index == amount:
                 break
@@ -63,7 +64,8 @@ class DLXMERTOracleDataset(Dataset):
             position = self.qid2pos[str(qid)]
             lxmertout[index] = self.encoding[position]
             ans[index] = ans2tok[turn['answer']]
-        return (torch.tensor(lxmertout), len(dialog)), (ans, gameid)
+            sz += 1
+        return (torch.tensor(lxmertout), sz), (ans, gameid)
 
 
 if __name__ == '__main__':

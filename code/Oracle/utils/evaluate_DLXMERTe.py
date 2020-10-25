@@ -114,11 +114,12 @@ if __name__ == "__main__":
     stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
     for i_batch, batch in stream:
         encoding = batch[0][0]
-        length = batch[0][1]
+        lengths = batch[0][1]
+        mxl = max(lengths)
         #pencodings = pack_padded_sequence(encodings, lengths=lengths, batch_first=True, enforce_sorted=False)
-        output = model(encoding, length)
+        output = model(batch)
         dialogs = 0
-        answers = torch.reshape(batch[1][0], (1, 16)).squeeze(0)
+        answers = torch.reshape(batch[1][0], (1, mxl)).squeeze(0)
         gameid = batch[1][1][0]
         predicted_classes = output.topk(1,dim=1)[1].squeeze(0).squeeze(0)
         dialog_tope = 0

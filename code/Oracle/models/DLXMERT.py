@@ -24,10 +24,14 @@ class DLXMERTe(nn.Module):
         self.hidden2ans = nn.Linear(hidden_size, 3)
         self.sftmx = nn.Softmax(dim=2)
 
-    def forward(self, encoded_dialog, lengths):
+    def forward(self, batch):
+        lengths, ind = torch.sort(batch[0][1], descending=True)
+        input_seq = batch[0][0][ind]
+        packed = pack_padded_sequence(input_seq, list(lengths), batch_first=True)
         #self.lstm.flatten_parameters()
-        output, (h_n, c_n)  = self.lstm(encoded_dialog)
-        output, _ = pad_packed_sequence(output, batch_first=True, total_length=16)
+        #print(type(encoded_dialog))
+        output, states = self.lstm(packed)
+        output, _ = pad_packed_sequence(output, batch_first=True)
         to = self.hidden2ans(output)
         out = self.sftmx(to)
         out = torch.transpose(out, 2, 1)

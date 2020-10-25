@@ -58,9 +58,9 @@ if __name__ == "__main__":
     
     #hiperparametros lr, dropout, batch_size, epochs
     epochs = 1
-    lr = 0.00001
+    lr = 0.0001
     dropout = 0
-    batch_size = 32
+    batch_size = 1
     lstm_hidden = 6
     lstm_layers = 6
 
@@ -141,23 +141,16 @@ if __name__ == "__main__":
             for i_batch, batch in stream:
                 encodings = batch[0][0]
                 lengths = batch[0][1]
-                print(encodings.size())
-                print(lengths)
-                # Los encodings ya vienen con padding (padding con vectores de 0). Ahora tenemos que empaquetarlo en 
-                # pytorch para que la red sepa que hay dialogos con menos de 16 turnos y solo backpropaguee
-                # en los dialogos y no en los paddings tambien. Pero aca es la parte que falla porque no puedo 
-                # hacer que pack_padded_sequence sepa que el padding son vectores de ceros. Cabe aclarar que arriba de la LSTM 
-                # tenemos una mini MLP para convertir losoutputs de la lstm para cada tiempo en un vector de 3 ocpiones (yes, no, n/a)
-                # asi arriba de eso hacer softmax, por eso mismo dentro del modelo, en la salida de la lstm se tiene que volver a 
-                # desempaquetar la sequencia.
-                encodings = pack_padded_sequence(encodings, lengths=lengths, batch_first=True)
-                answers = torch.reshape(batch[1][0], (batch_size, 16))
-                output = model(encodings, lengths)
+                mxl = max(lengths)
+                answers = torch.reshape(batch[1][0], (batch_size, mxl))
+                output = model(batch)
+                print('OUTPUT SHAPE: ', output.size())
+                print('ANSWER SHAPE: ', answers.size())
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
-
+                break
                 accuracy.append(calculate_accuracy_oracle(output, answers.cuda() if use_cuda else answers, lengths))
                 
-                stream.set_description("Train accuracy: {}".format(np.round(np.mean(accuracy), 2)))
+                stream.set_description("Train accuracy: %.3f"%(loss.data))
                 stream.refresh()  # to show immediately the update
                 
                 if split == 'train':
@@ -168,7 +161,6 @@ if __name__ == "__main__":
                     train_loss = torch.cat([train_loss, loss.data])
                 else:
                     val_loss = torch.cat([val_loss, loss.data])
-                break
 
             if split == 'train':
                 train_accuracy = np.mean(accuracy)
