@@ -65,10 +65,15 @@ if __name__ == '__main__':
     parser.add_argument("-load_bin_path", type=str)
     parser.add_argument("-case", type=bool, default=False)
     parser.add_argument("--modelname", type=str)
-
+    parser.add_argument("--dataset", type=str, default='')
+    parser.add_argument("--history", type=bool, default=False)
 
     args = parser.parse_args()
     config_file = 'config/Oracle/config_small.json'
+
+    onlyhist = False
+    if args.dataset == 'historical':
+        onlyhist = True
     
     if args.config == "big":
         config_file = 'config/Oracle/config.json'
@@ -184,11 +189,12 @@ if __name__ == '__main__':
         hdf5_visual_feat    = args.set+'_img_features',
         hdf5_crop_feat      = 'crop_features',
         imgid2fasterRCNNfeatures = imgid2fasterRCNNfeatures,
-        history             = dataset_config['history'],
+        history             = args.history,
         new_oracle_data     = True, #dataset_config['new_oracle_data']
         successful_only     = dataset_config['successful_only'],
         load_crops=True,
-        only_location=False
+        only_location=False,
+        onlyhist=onlyhist
     )
 
     accuracy = []
@@ -213,7 +219,7 @@ if __name__ == '__main__':
     pos = 0
     did = 0
     last_game_id = None
-    fname = args.modelname+args.set+"predictions.csv"
+    fname = args.dataset+args.modelname+args.set+"predictions.csv"
     with open(fname, mode="w") as out_file:
         writer = csv.writer(out_file)
         writer.writerow(["Game ID", "Position", "qid", "Input", "GT Answer", "Model Answer"])
@@ -234,7 +240,7 @@ if __name__ == '__main__':
                 Variable(visual_features),
                 Variable(lengths),
                 sample["history_raw"],
-                sample['FasterRCNN']['features'], #problem of dimensions
+                sample['FasterRCNN']['features'], 
                 sample['FasterRCNN']['boxes'],
                 sample["target_bbox"],
                 Variable(sample['train_features']['input_ids']),
@@ -279,7 +285,8 @@ if __name__ == '__main__':
         print("Accuracy: {}".format(np.mean(accuracy)))
 
     if args.add_bycat:
-        compute_bycategory(fname)
+        #compute_bycategory(fname)
+        pass
     
     if args.case:
         cases = [9991, 10582, 15377, 16730, 26043, 30823, 35257, 44834, 45595, 51823, 52488, 60777, 68445]

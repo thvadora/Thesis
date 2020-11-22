@@ -20,10 +20,10 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pack_padded_sequence
 
 from lxmert.src.lxrt.optimization import BertAdam
-from models.DLXMERT import DLXMERTe
+from models.POSDLXMERT import POSDLXMERT
 from utils.config import load_config
 from utils.model_loading import load_model
-from utils.datasets.Oracle.DLXMERTOracleDataset import DLXMERTOracleDataset
+from utils.datasets.Oracle.POSDLXMERTOracleDataset import POSDLXMERTOracleDataset
 from utils.vocab import create_vocab
 from utils.evaluate_byclass import compute_bycategory
 
@@ -62,18 +62,19 @@ if __name__ == "__main__":
     parser.add_argument("-load_bin_path", type=str)
     parser.add_argument("-add_bycat", type=bool, default=True)
     parser.add_argument("--dataset", type=str, default='')
+    parser.add_argument("-onlyobj", type=bool, default=False, help='Data Directory')
     args = parser.parse_args()
 
     onlyhist = False
     if args.dataset == 'historical':
         onlyhist = True
-    
+
     #hiperparametros lr, dropout, batch_size, epochs
-    epochs = 25
-    lr = 0.00001
+    epochs = 50
+    lr = 0.001
     dropout = 0
     batch_size = 1
-    lstm_hidden = 100
+    lstm_hidden = 200
     lstm_layers = 1
 
     with gzip.open('./data/guesswhat.train.jsonl.gz') as file:
@@ -86,11 +87,14 @@ if __name__ == "__main__":
         qid2pos_valid = json.load(file)
 
     # Init Model, Loss Function and Optimizer
-    model = DLXMERTe(
+    model = POSDLXMERT(
         input_size = 768,
         hidden_size = lstm_hidden, 
         num_layers = lstm_layers
     )
+
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
     if use_cuda:
         model.cuda()
@@ -98,12 +102,11 @@ if __name__ == "__main__":
     
     model.load_state_dict(torch.load(args.load_bin_path))
 
-    dataset= DLXMERTOracleDataset(
-        turns = 16,
+    dataset = POSDLXMERTOracleDataset(
         data_path = args.data_dir,
         sett = args.set,
-        only_encodings = True,
-        onlyhist=onlyhist
+        onlyhist = onlyhist,
+        onlyobj = args.onlyobj
     )
 
     torch.set_grad_enabled(False)
@@ -117,49 +120,41 @@ if __name__ == "__main__":
                 num_workers=0 if sys.gettrace() else 4,
                 pin_memory=use_cuda
             )
-
     tok2ans = {
         0 : 'No',
         1 : 'Yes',
         2 : 'N/A'
     }
-    fname = args.dataset+"dlxmert"+args.set+"predictions.csv"
+
+    ob = ""
+    if args.onlyobj:
+        ob = "obj"
+    fname = args.dataset+ob+"posdlxmert"+args.set+"predictions.csv"
     with open(fname, mode="w", encoding='utf-8') as out_file:
         writer = csv.writer(out_file)
         writer.writerow(["Game ID", "Position", "qid", "Input", "GT Answer", "Model Answer"])
         stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
         for i_batch, batch in stream:
-            encodings = batch['lxmertout']
-            lengths = batch['sizes']
-            mxl = max(lengths)
-            answers = torch.narrow(batch['answers'], 1, 0, mxl)
-            #print(answers[0][0].item())
-            output = model(encodings, lengths)
+            encodings = batch['encodings']
+            answers = batch['ans']
+            output = model(encodings)
+            output = output[0]
             predicted_classes = output.topk(1,dim=1)[1]
-            res = predicted_classes.squeeze(1)[0]
-            gameid = batch['game_ids'].item()
-            qids = batch['qids']
-            rawin = batch['raw_q']
-            #print(res)
-            #break
-            for index, x in enumerate(encodings[0]):
-                newans = tok2ans[res[index].item()]
-                realans = tok2ans[answers[0][index].item()]
-                rawq = rawin[index][0]
-                qid = qids[index].item()
-                writer.writerow(
-                    [
-                        gameid,
-                        index,
-                        qid,
-                        rawq,
-                        realans,
-                        newans
-                    ]
-                )
-    
-    if args.add_bycat:
-        #compute_bycategory(fname)
-        pass
-    #df.to_csv('dlxmert'+args.set+'predictions.csv')
-    #report accuray
+            res = predicted_classes.squeeze(1)[0].cpu().item()
+            gameid = batch['game_id'].item()
+            qid = batch['qid'].item()
+            rawin = batch['question'][0]
+            index = batch['pos'].item()
+            gtans = answers.item()
+            newans = tok2ans[res]
+            realans = tok2ans[gtans]
+            writer.writerow(
+                [
+                    gameid,
+                    index,
+                    qid,
+                    rawin,
+                    realans,
+                    newans
+                ]
+            )

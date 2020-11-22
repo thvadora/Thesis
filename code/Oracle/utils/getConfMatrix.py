@@ -21,11 +21,12 @@ mpl.style.use('seaborn')
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-data", type=str, help='CSV')
+    parser.add_argument("-where", type=str, help="where to save it")
     args = parser.parse_args()
 
     data = pd.read_csv(args.data, keep_default_na=False)
 
-    matrix = np.zeros(shape=(3,3))
+    matrix = np.zeros(shape=(3,3), dtype=int)
 
     ans2tok = {
         'Yes' : 1,
@@ -44,18 +45,16 @@ if __name__ == "__main__":
         cno += (answer==0)
         cna += (answer==2)
         matrix[answer][pred] += 1
-    
-    print(matrix)
 
     sum = np.sum(matrix,axis=1)
     #print(sum)
     #matrix/=sum
     #print(matrix)
-    matrix[0] /= sum[0]
-    matrix[1] /= sum[1]
-    matrix[2] /= sum[2]
+    #matrix[0] /= sum[0]
+    #matrix[1] /= sum[1]
+    #matrix[2] /= sum[2]
 
-    print(matrix)
+    #print(matrix)
 
     df_cm = pd.DataFrame(matrix, 
     index = [ 'No', 'Yes', 'N/A'],
@@ -70,7 +69,7 @@ if __name__ == "__main__":
 
     cmap = sn.cubehelix_palette(light=1, as_cmap=True)
 
-    res = sn.heatmap(df_cm, annot=True, vmin=0.0, vmax=1.0, fmt='.2f', cmap=cmap)
+    res = sn.heatmap(df_cm, annot=True, vmin=0.0, vmax=matrix.max(), fmt='.0f', cmap=cmap)
 
     plt.yticks([0.5,1.5,2.5], [ 'No', 'Yes', 'N/A'],va='center')
 

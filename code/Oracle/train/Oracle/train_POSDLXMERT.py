@@ -20,48 +20,37 @@ from torch.nn.utils.rnn import pad_sequence
 import matplotlib.pyplot as plt
 
 from lxmert.src.lxrt.optimization import BertAdam
-from models.DLXMERT import DLXMERTe
+from models.POSDLXMERT import POSDLXMERT
 from utils.config import load_config
-from utils.datasets.Oracle.DLXMERTOracleDataset import DLXMERTOracleDataset
+from utils.datasets.Oracle.POSDLXMERTOracleDataset import POSDLXMERTOracleDataset
 from utils.vocab import create_vocab
 
 use_cuda = torch.cuda.is_available()
 
 def calculate_accuracy_oracle(predictions, targets):
     """
-    :param prediction: NxCxdialogsize
+    :param prediction: NxC
     :param targets: N
     """
     if isinstance(predictions, Variable):
         predictions = predictions.data
     if isinstance(targets, Variable):
         targets = targets.data
-    #print('predictions: ', predictions)
-    #print(predictions.size())
-    #print('target: ', targets[0])
-    #print(targets.size())
-    predicted_classes = predictions.topk(1,dim=1)[1]
-    #print('classes: ', predicted_classes.squeeze(1)[0])
-    #print('nom: ', torch.eq(predicted_classes.squeeze(1)[0], targets[0]).sum().item())
-    #print('denom: ', predicted_classes.squeeze(1)[0].size()[0])
-    accuracy = (torch.eq(predicted_classes.squeeze(1)[0], targets[0]).sum().item())/predicted_classes.squeeze(1)[0].size()[0]
-    #print(accuracy)
-    #print(torch.eq(predicted_classes.squeeze(1), targets))
-    #print(torch.eq(predicted_classes.squeeze(1), targets).size())
-    return accuracy
 
+    predicted_classes = predictions.topk(1)[1]
+    accuracy = torch.eq(predicted_classes.squeeze(1), targets).sum().item()/targets.size(0)
+    return accuracy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
     parser.add_argument("-save_in", type=str, default="bin/Oracle", help='Data Directory')
-    parser.add_argument("-bin_name", type=str, default="dlxmerte", help='Data Directory')
-    parser.add_argument("-pos", type=bool, default=False)
-    parser.add_argument("-obj", type=bool, default=False)
+    parser.add_argument("-bin_name", type=str, default="posdlxmerte", help='Data Directory')
+    parser.add_argument("-onlyobj", type=bool, default=False, help='Data Directory')
     args = parser.parse_args()
     
     #hiperparametros lr, dropout, batch_size, epochs
-    epochs = 10
+    epochs = 50
     lr = 0.001
     dropout = 0
     batch_size = 1
@@ -78,7 +67,7 @@ if __name__ == "__main__":
         qid2pos_valid = json.load(file)
 
     # Init Model, Loss Function and Optimizer
-    model = DLXMERTe(
+    model = POSDLXMERT(
         input_size = 768,
         hidden_size = lstm_hidden, 
         num_layers = lstm_layers
@@ -91,24 +80,18 @@ if __name__ == "__main__":
         model.cuda()
         model = DataParallel(model)
     
-    model.load_state_dict(torch.load('./bin/Oracle/oracledlxmert8'))
+    #model.load_state_dict(torch.load('./bin/Oracle/oracledlxmert8'))
 
-    dataset_train = DLXMERTOracleDataset(
-        turns = 16,
+    dataset_train = POSDLXMERTOracleDataset(
         data_path = args.data_dir,
         sett = 'train',
-        only_encodings = True,
-        onlypositives=args.pos,
-        onlyobj=args.pos
+        onlyobj=args.onlyobj
     )
 
-    dataset_validation = DLXMERTOracleDataset(
-        turns = 16,
+    dataset_validation = POSDLXMERTOracleDataset(
         data_path = args.data_dir,
         sett = 'val',
-        only_encodings = True,
-        onlypositives=args.pos,
-        onlyobj=args.pos
+        onlyobj = args.onlyobj
     )
 
     print("Initializing the optimizer...")
@@ -156,36 +139,16 @@ if __name__ == "__main__":
             stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
             did = 0
             for i_batch, batch in stream:
-                encodings = batch['lxmertout']
-                lengths = batch['sizes']
-                mxl = max(lengths)
-                
-                print("EJEMPLO: ")
-                #print("DATO: \n")
-                print(batch)
-                #print("ENCODING: \n")
+                encodings = batch['encodings']
+                answers = batch['ans']
                 #print(encodings)
-                #print("ECODING SIZE: \n")
-                print(encodings.size())
-                answers = torch.narrow(batch['answers'], 1, 0, mxl)
-                print("ANSWERS: \n")
-                print(answers)
-                #print()
-                #print("PASO LOS ENCODINGS AL MODELO: \n")
-                #print()
-                output = model(encodings, lengths, debug=True)
-                #print()
-                #print("CACLULO LOSS: \n")
-                #print()
+                #print(answers)
+                output = model(encodings)
+                output = output[0]
                 loss = loss_function(output, Variable(answers).cuda() if use_cuda else Variable(answers)).unsqueeze(0)
-                #print("loss = ", loss)
-                #print(loss)
-                if did >= 2:
-                    exit(1)
                 accuracy.append(calculate_accuracy_oracle(output, answers.cuda() if use_cuda else answers))
                 
-                did += 1
-                stream.set_description("Train accuracy: %.3f"%(loss.data))
+                stream.set_description("Train Loss: %.3f"%(loss.data))
                 stream.refresh()  # to show immediately the update
                 
                 if split == 'train':

@@ -20,17 +20,25 @@ class LXMERTOracleDataset(Dataset):
                  visual_feat_crop_file, visual_feat_crop_mapping_file, max_src_length, hdf5_visual_feat,
                  hdf5_crop_feat,
                  imgid2fasterRCNNfeatures,
-                 history = False, new_oracle_data=False, successful_only=True, min_occ=3, load_crops=False, bert_tok=False, only_location=False):
+                 history = False, new_oracle_data=False, successful_only=True, min_occ=3, load_crops=False, bert_tok=False, only_location=False, onlyhist=False):
 
         self.data_dir = data_dir
         self.split = split
         self.history = history
-
+        self.onlyhist = onlyhist
+        self.historical = []
         # Using the bert tokenizer
         self.tokenizer = BertTokenizer.from_pretrained(
             "bert-base-uncased",
             do_lower_case=True
         )
+
+        if self.onlyhist:
+            file_name = os.path.join(data_dir, 'ids_hist_dep.txt')
+            f = open(file_name, 'r')
+            for line in f.readlines():
+                ide = int(line)
+                self.historical.append(ide)
 
         # where to save/load preprocessed data
         if self.history:
@@ -191,6 +199,10 @@ class LXMERTOracleDataset(Dataset):
         with gzip.open(path) as file:
             for json_game in file:
                 game = json.loads(json_game.decode("utf-8"))
+
+                if self.onlyhist:
+                    if int(game['id']) not in self.historical:
+                        continue
 
                 if self.successful_only:
                     if not game['status'] == 'success':

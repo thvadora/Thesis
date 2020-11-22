@@ -1,0 +1,262 @@
+EVALUATION. COMPUTING CSVs
+
+
+Evaluating LXMERT in whole test set
+
+Loading MSCOCO bottomup index from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_info.json
+Loading MSCOCO bottomup features from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_features.npy
+Loading MSCOCO bottomup boxes from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_boxes.npy
+Bert tokenizer or standard vocab?
+LXRT encoder with 9 l_layers, 5 x_layers, and 5 r_layers.
+Loading LXMERT pretrained model...
+Load LXMERT pre-trained model from ./lxmert/snap/pretrained/model
+
+Weights in loaded but not in model:
+answer_head.logit_fc.0.bias
+answer_head.logit_fc.0.weight
+answer_head.logit_fc.2.bias
+answer_head.logit_fc.2.weight
+answer_head.logit_fc.3.bias
+answer_head.logit_fc.3.weight
+cls.predictions.bias
+cls.predictions.decoder.weight
+cls.predictions.transform.LayerNorm.bias
+cls.predictions.transform.LayerNorm.weight
+cls.predictions.transform.dense.bias
+cls.predictions.transform.dense.weight
+cls.seq_relationship.bias
+cls.seq_relationship.weight
+obj_predict_head.decoder_dict.attr.bias
+obj_predict_head.decoder_dict.attr.weight
+obj_predict_head.decoder_dict.feat.bias
+obj_predict_head.decoder_dict.feat.weight
+obj_predict_head.decoder_dict.obj.bias
+obj_predict_head.decoder_dict.obj.weight
+obj_predict_head.transform.LayerNorm.bias
+obj_predict_head.transform.LayerNorm.weight
+obj_predict_head.transform.dense.bias
+obj_predict_head.transform.dense.weight
+
+Weights in model but not in loaded:
+
+./bin/Oracle/lxmert_big True True
+data file name oracle_test_data.json
+Creating New oracle_test_data.json File.
+done
+Accuracy: 0.8300228493546059
+Evaluating EVALPOS in whole test set
+
+Loading MSCOCO bottomup index from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_info.json
+Loading MSCOCO bottomup features from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_features.npy
+Loading MSCOCO bottomup boxes from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_boxes.npy
+Bert tokenizer or standard vocab?
+LXRT encoder with 9 l_layers, 5 x_layers, and 5 r_layers.
+Loading LXMERT pretrained model...
+Load LXMERT pre-trained model from ./lxmert/snap/pretrained/model
+
+Weights in loaded but not in model:
+answer_head.logit_fc.0.bias
+answer_head.logit_fc.0.weight
+answer_head.logit_fc.2.bias
+answer_head.logit_fc.2.weight
+answer_head.logit_fc.3.bias
+answer_head.logit_fc.3.weight
+cls.predictions.bias
+cls.predictions.decoder.weight
+cls.predictions.transform.LayerNorm.bias
+cls.predictions.transform.LayerNorm.weight
+cls.predictions.transform.dense.bias
+cls.predictions.transform.dense.weight
+cls.seq_relationship.bias
+cls.seq_relationship.weight
+obj_predict_head.decoder_dict.attr.bias
+obj_predict_head.decoder_dict.attr.weight
+obj_predict_head.decoder_dict.feat.bias
+obj_predict_head.decoder_dict.feat.weight
+obj_predict_head.decoder_dict.obj.bias
+obj_predict_head.decoder_dict.obj.weight
+obj_predict_head.transform.LayerNorm.bias
+obj_predict_head.transform.LayerNorm.weight
+obj_predict_head.transform.dense.bias
+obj_predict_head.transform.dense.weight
+
+Weights in model but not in loaded:
+
+./bin/Oracle/lxmert_big True True
+data file name oracle_test_history_data.json
+Creating New oracle_test_history_data.json File.
+done
+Accuracy: 0.8300428926481199
+Evaluating POS200 in whole test set
+
+Loading MSCOCO bottomup index from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_info.json
+Loading MSCOCO bottomup features from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_features.npy
+Loading MSCOCO bottomup boxes from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_boxes.npy
+Bert tokenizer or standard vocab?
+LXRT encoder with 9 l_layers, 5 x_layers, and 5 r_layers.
+Loading LXMERT pretrained model...
+Load LXMERT pre-trained model from ./lxmert/snap/pretrained/model
+
+Weights in loaded but not in model:
+answer_head.logit_fc.0.bias
+answer_head.logit_fc.0.weight
+answer_head.logit_fc.2.bias
+answer_head.logit_fc.2.weight
+answer_head.logit_fc.3.bias
+answer_head.logit_fc.3.weight
+cls.predictions.bias
+cls.predictions.decoder.weight
+cls.predictions.transform.LayerNorm.bias
+cls.predictions.transform.LayerNorm.weight
+cls.predictions.transform.dense.bias
+cls.predictions.transform.dense.weight
+cls.seq_relationship.bias
+cls.seq_relationship.weight
+obj_predict_head.decoder_dict.attr.bias
+obj_predict_head.decoder_dict.attr.weight
+obj_predict_head.decoder_dict.feat.bias
+obj_predict_head.decoder_dict.feat.weight
+obj_predict_head.decoder_dict.obj.bias
+obj_predict_head.decoder_dict.obj.weight
+obj_predict_head.transform.LayerNorm.bias
+obj_predict_head.transform.LayerNorm.weight
+obj_predict_head.transform.dense.bias
+obj_predict_head.transform.dense.weight
+
+Weights in model but not in loaded:
+
+./bin/Oracle/posHist_200sents_epoch15 True True
+data file name oracle_test_history_data.json
+Creating New oracle_test_history_data.json File.
+done
+Accuracy: 0.8252024372644913
+Evaluating DLXMERT in whole test set
+
+Evaluating POSDLXMERT in whole test set
+
+Computing Confusion Matrixs
+
+Confusion matrixs ready in root
+
+Compute by category (whole test set)
+
+LXMERT:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8292912691413453
+Attributes
+color: 76.34  Number of question of this category:  15403
+shape: 69.44  Number of question of this category:  301
+size: 74.05  Number of question of this category:  1364
+texture: 77.36  Number of question of this category:  901
+action: 76.76  Number of question of this category:  7645
+spatial: 76.59  Number of question of this category:  39250
+Entities
+object: 90.07  Number of question of this category:  43303
+super-category: 92.33  Number of question of this category:  2372
+NA: 48.44  number of q :  1519
+EVALPOS:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8293113124348593
+Attributes
+color: 76.34  Number of question of this category:  15403
+shape: 69.44  Number of question of this category:  301
+size: 74.05  Number of question of this category:  1364
+texture: 77.36  Number of question of this category:  901
+action: 76.76  Number of question of this category:  7645
+spatial: 76.59  Number of question of this category:  39250
+Entities
+object: 90.08  Number of question of this category:  43303
+super-category: 92.33  Number of question of this category:  2372
+NA: 48.44  number of q :  1519
+POS200:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8244909003447447
+Attributes
+color: 75.43  Number of question of this category:  15403
+shape: 70.76  Number of question of this category:  301
+size: 74.85  Number of question of this category:  1364
+texture: 79.69  Number of question of this category:  901
+action: 76.01  Number of question of this category:  7645
+spatial: 75.89  Number of question of this category:  39250
+Entities
+object: 89.73  Number of question of this category:  43303
+super-category: 92.66  Number of question of this category:  2372
+NA: 48.74  number of q :  1519
+DLXMERT:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8173454662070071
+Attributes
+color: 74.70  Number of question of this category:  15403
+shape: 73.09  Number of question of this category:  301
+size: 73.83  Number of question of this category:  1364
+texture: 77.14  Number of question of this category:  901
+action: 75.67  Number of question of this category:  7645
+spatial: 75.99  Number of question of this category:  39250
+Entities
+object: 88.43  Number of question of this category:  43303
+super-category: 90.60  Number of question of this category:  2372
+NA: 47.68  number of q :  1519
+POSDLXMERT:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8192996873246212
+Attributes
+color: 75.08  Number of question of this category:  15403
+shape: 73.42  Number of question of this category:  301
+size: 73.68  Number of question of this category:  1364
+texture: 77.80  Number of question of this category:  901
+action: 75.49  Number of question of this category:  7645
+spatial: 76.04  Number of question of this category:  39250
+Entities
+object: 88.71  Number of question of this category:  43303
+super-category: 90.77  Number of question of this category:  2372
+NA: 48.02  number of q :  1519
+EVALUATING IN MINI DATASET HISTORICALMODEL:  lxmert
+ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
+ACURACCY FOR TYPE  history :  0.17142857142857143 FORMULA:  6.0 / 35.0
+ACURACCY FOR TYPE  middle :  0.26515151515151514 FORMULA:  35.0 / 132.0
+ACURACCY FOR TYPE  x-axis :  0.26535626535626533 FORMULA:  108.0 / 407.0
+ACURACCY FOR TYPE  y-axis :  0.36538461538461536 FORMULA:  19.0 / 52.0
+MODEL:  dlxmert
+ACCURACY FOR THE MINI TEST SET IS :  0.1485623003194888
+ACURACCY FOR TYPE  history :  0.2571428571428571 FORMULA:  9.0 / 35.0
+ACURACCY FOR TYPE  middle :  0.12878787878787878 FORMULA:  17.0 / 132.0
+ACURACCY FOR TYPE  x-axis :  0.14250614250614252 FORMULA:  58.0 / 407.0
+ACURACCY FOR TYPE  y-axis :  0.17307692307692307 FORMULA:  9.0 / 52.0
+MODEL:  pos200
+ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
+ACURACCY FOR TYPE  history :  0.2 FORMULA:  7.0 / 35.0
+ACURACCY FOR TYPE  middle :  0.30303030303030304 FORMULA:  40.0 / 132.0
+ACURACCY FOR TYPE  x-axis :  0.25307125307125306 FORMULA:  103.0 / 407.0
+ACURACCY FOR TYPE  y-axis :  0.34615384615384615 FORMULA:  18.0 / 52.0
+MODEL:  evalpos
+ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
+ACURACCY FOR TYPE  history :  0.17142857142857143 FORMULA:  6.0 / 35.0
+ACURACCY FOR TYPE  middle :  0.26515151515151514 FORMULA:  35.0 / 132.0
+ACURACCY FOR TYPE  x-axis :  0.26535626535626533 FORMULA:  108.0 / 407.0
+ACURACCY FOR TYPE  y-axis :  0.36538461538461536 FORMULA:  19.0 / 52.0
+MODEL:  posdlxmert
+ACCURACY FOR THE MINI TEST SET IS :  0.12939297124600638
+ACURACCY FOR TYPE  history :  0.22857142857142856 FORMULA:  8.0 / 35.0
+ACURACCY FOR TYPE  middle :  0.13636363636363635 FORMULA:  18.0 / 132.0
+ACURACCY FOR TYPE  x-axis :  0.10810810810810811 FORMULA:  44.0 / 407.0
+ACURACCY FOR TYPE  y-axis :  0.21153846153846154 FORMULA:  11.0 / 52.0

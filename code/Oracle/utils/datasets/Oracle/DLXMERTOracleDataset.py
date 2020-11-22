@@ -13,13 +13,25 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 import collections
 from torch.utils.data import DataLoader
+from question_analysis.qclassify import qclass
+classifier = qclass()
 
 class DLXMERTOracleDataset(Dataset):
-    def __init__(self, turns, data_path, sett, only_encodings, succesful_only=True):
+    def __init__(self, turns, data_path, sett, only_encodings, succesful_only=True, onlyhist=False, onlypositives=False, onlyobj=False):
         self.turns = turns
         self.data_path = data_path
         self.sett = sett
         self.only_encodings = only_encodings
+        self.onlyhist = onlyhist
+        self.onlypositives = onlypositives
+        self.onlyobj = onlyobj
+        self.historical = []
+        if self.onlyhist:
+            file_name = os.path.join(data_path, 'ids_hist_dep.txt')
+            f = open(file_name, 'r')
+            for line in f.readlines():
+                ide = int(line)
+                self.historical.append(ide)
         map_file = os.path.join(data_path, 'qid2pos_'+self.sett+'.json')
         with open(map_file) as json_file:
             self.qid2pos = json.load(json_file)
@@ -35,6 +47,9 @@ class DLXMERTOracleDataset(Dataset):
         with gzip.open(gw_file) as file:
             for game in file:
                 g = json.loads(game.decode("utf-8"))
+                if self.onlyhist:
+                    if int(g['id']) not in self.historical:
+                        continue
                 if succesful_only:
                     if g['status'] == 'success':
                         self.gw.append(json.loads(game.decode("utf-8")))
@@ -46,26 +61,49 @@ class DLXMERTOracleDataset(Dataset):
     
     def __getitem__(self, idx):
         data = self.gw[idx]
-        amount = self.turns
         dialog = data['qas']
+        l = len(dialog)
         gameid = int(data['id'])
-        lxmertout = np.zeros(shape=(amount, 768), dtype=np.float32)
-        ans = np.zeros(shape=(min(len(dialog),amount)), dtype=np.longlong)
+        #lxmertout = np.zeros(shape=(l, 768), dtype=np.float32)
+        #ans = np.zeros(shape=(l), dtype=np.longlong)
+        lxmertout = []
+        ans = []
         ans2tok = {
             'Yes' : 1,
             'No'  : 0,
             'N/A' : 2
         }
+        raws = []
+        qids = []
         sz = 0
         for index, turn in enumerate(dialog):
-            if index == amount:
-                break
+            if self.onlypositives:
+                if turn['answer'] == 'No':
+                    continue
+            if self.onlyobj:
+                cat = classifier.que_classify_multi(turn['question'].lower())
+                if '<object>' not in cat:
+                    continue
             qid = turn['id']
+            raws.append(turn['question'])
+            qids.append(qid)
             position = self.qid2pos[str(qid)]
-            lxmertout[index] = self.encoding[position]
-            ans[index] = ans2tok[turn['answer']]
+            lxmertout.append(self.encoding[position])
+            ans.append(ans2tok[turn['answer']])
             sz += 1
-        return (torch.tensor(lxmertout), sz), (ans, gameid)
+        lxmertout = np.asarray(lxmertout)
+        ans = np.asarray(ans)
+        res = {
+            'lxmertout' : torch.tensor(lxmertout),
+            'sizes'     : sz,
+            'answers'   : ans,
+            'game_ids'  : gameid,
+            'raw_q'     : raws,
+            'qids'      : qids
+        }
+        return res
+        #return (torch.tensor(lxmertout), len(dialog)), (ans, gameid)
+        #return (torch.tensor([lxmertout[1]]), 1), (torch.tensor([ans[1]]), gameid)
 
 
 if __name__ == '__main__':
