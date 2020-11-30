@@ -8,7 +8,8 @@ evalpos="-config big -load_bin_path ./bin/Oracle/lxmert_big --modelname evalpos 
 pos200="-config big -load_bin_path ./bin/Oracle/posHist_200sents_epoch15 --modelname pos200 -set test --history True"
 dlxmert="-set test -load_bin_path bin/Oracle/oracledlxmerte4"
 posdlxmert="-set test -load_bin_path bin/Oracle/oracleposdlxmerte26"
-objposdlxmert="-set test -load_bin_path ...complete.."
+objposdlxmert="-set test -load_bin_path bin/Oracle/oracleobjposdlxmert49"
+mixLL="-set test -load_bin_path bin/Oracle/oraclemixLL48"
 
 printf "EVALUATION. COMPUTING CSVs\n\n\n"
 
@@ -36,6 +37,10 @@ printf "Evaluating OBJPOSDLXMERT in whole test set\n\n"
 
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_POSDLXMERT $objposdlxmert -onlyobj True
 
+printf "Evaluating MIXLL in whole test set\n\n"
+
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_mixLL $mixLL -onlyobj False
+
 printf "Computing Confusion Matrixs\n\n"
 
 savein="./"
@@ -52,6 +57,8 @@ posdlxmert="posdlxmerttestpredictions.csv"
 poshistdlxmert="historicalposdlxmerttestpredictions.csv"
 objposdlxmert="objposdlxmerttestpredictions.csv"
 objposhistdlxmert="historicalobjposdlxmerttestpredictions.csv"
+mixLL="mixLLtestpredictions.csv"
+histmixLL="historicalmixLLtestpredictions.csv"
 
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $lxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histlxmert -where $savein
@@ -65,6 +72,8 @@ CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $posdlxmert -whe
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $poshistdlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $objposdlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $objposhistdlxmert -where $savein
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $mixLL -where $savein
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histmixLL -where $savein
 
 printf "Confusion matrixs ready in root\n\n"
 
@@ -82,12 +91,12 @@ printf "POSDLXMERT:\n"
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $posdlxmert -name LXMERT -is_historical False
 printf "OBJPOSDLXMERT:\n"
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $objposdlxmert -name LXMERT -is_historical False -onlyobj True
+printf "MIXLL:\n"
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $mixLL -name LXMERT -is_historical False
 
 
 printf "EVALUATING IN MINI DATASET HISTORICAL"
 
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_minitest -models lxmert,dlxmert,pos200,evalpos,posdlxmert,objposdlxmert
-
-
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_minitest -models lxmert,dlxmert,pos200,evalpos,posdlxmert,objposdlxmert,mixLL
 
 
