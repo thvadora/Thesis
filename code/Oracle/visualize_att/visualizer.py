@@ -31,12 +31,12 @@ use_cuda = torch.cuda.is_available()
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
-    parser.add_argument("-config", type=str, default="small", help='Config type [big, small]')
+    parser.add_argument("-config", type=str, default="big", help='Config type [big, small]')
     parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
     parser.add_argument("-exp_name", type=str, default="exp", help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
-    parser.add_argument("-load_bin_path", type=str)
-    parser.add_argument("-set", type=str, default="val")
+    parser.add_argument("-load_bin_path", type=str, default='./bin/Oracle/lxmert_big')
+    parser.add_argument("-set", type=str, default="test")
 
     args = parser.parse_args()
     config_file = 'config/Oracle/config_small.json'
@@ -163,16 +163,23 @@ if __name__ == '__main__':
         pin_memory=exp_config['use_cuda']
     )
 
-    wannasee = '68445'
+    torch.set_grad_enabled(False)
+    model.eval()
+
+    wannasee = ['64336', '64551', '68445', '74973']
     turn = 0
+    lastid = -1
 
     stream = tqdm.tqdm(enumerate(dataloader), total=len(dataloader), ncols=100)
 
     for i_batch, sample in stream:
         #print(dataset_test.oracle_data[idx])
         #sample = dataset_test.__getitem__(idx)
-        if sample['game_id'][0] == wannasee:
+        if sample['game_id'][0] in wannasee:
             game_id = sample['game_id'][0]
+            if game_id != lastid:
+                turn = 0
+            lastid = game_id
             questions, answers, crop_features, visual_features, spatials, obj_categories, lengths = \
             sample['question'], sample['answer'], sample['crop_features'], sample['img_features'], sample['spatial'], \
             sample['obj_cat'], sample['length']
@@ -191,7 +198,8 @@ if __name__ == '__main__':
                  Variable(sample['train_features']['input_mask']),
                  Variable(sample['train_features']['segment_ids'])
             )
-
+            #print(model.module.lxrt_encoder.model.bert.encoder.x_layers[0].lang_att_map[0].detach().cpu().numpy())
+            #exit(1)
             datapoint = 0
             
             try:
@@ -279,7 +287,7 @@ if __name__ == '__main__':
                         sample["game_id"][datapoint], turn, layer, " ".join(tokenized_history).replace("/", "_"),
                         tok2ans[sample["answer"][datapoint].item()].replace("/", "_")), bbox_inches='tight', pad_inches=0.5)
                 plt.close()
-                turn+=1
+            turn+=1
 
 
     

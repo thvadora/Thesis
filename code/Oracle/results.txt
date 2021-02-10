@@ -43,7 +43,7 @@ Weights in model but not in loaded:
 data file name oracle_test_data.json
 Creating New oracle_test_data.json File.
 done
-Accuracy: 0.8300228493546059
+Accuracy: 0.8300328710013629
 Evaluating EVALPOS in whole test set
 
 Loading MSCOCO bottomup index from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_info.json
@@ -86,7 +86,7 @@ Weights in model but not in loaded:
 data file name oracle_test_history_data.json
 Creating New oracle_test_history_data.json File.
 done
-Accuracy: 0.8300428926481199
+Accuracy: 0.8300328710013629
 Evaluating POS200 in whole test set
 
 Loading MSCOCO bottomup index from: ./lxmert/data/mscoco_imgfeat/mscoco_bottomup_info.json
@@ -134,6 +134,10 @@ Evaluating DLXMERT in whole test set
 
 Evaluating POSDLXMERT in whole test set
 
+Evaluating OBJPOSDLXMERT in whole test set
+
+Evaluating MIXLL in whole test set
+
 Computing Confusion Matrixs
 
 Confusion matrixs ready in root
@@ -146,7 +150,7 @@ Getting DATA..
 TOT:  99784
 Done getting DATA!
 Calculating...
-ACCURACY:  0.8292912691413453
+ACCURACY:  0.8293012907881023
 Attributes
 color: 76.34  Number of question of this category:  15403
 shape: 69.44  Number of question of this category:  301
@@ -157,14 +161,14 @@ spatial: 76.59  Number of question of this category:  39250
 Entities
 object: 90.07  Number of question of this category:  43303
 super-category: 92.33  Number of question of this category:  2372
-NA: 48.44  number of q :  1519
+NA: 75.64  number of q :  1519
 EVALPOS:
 Calculating Accuracy per category...
 Getting DATA..
 TOT:  99784
 Done getting DATA!
 Calculating...
-ACCURACY:  0.8293113124348593
+ACCURACY:  0.8293012907881023
 Attributes
 color: 76.34  Number of question of this category:  15403
 shape: 69.44  Number of question of this category:  301
@@ -173,9 +177,9 @@ texture: 77.36  Number of question of this category:  901
 action: 76.76  Number of question of this category:  7645
 spatial: 76.59  Number of question of this category:  39250
 Entities
-object: 90.08  Number of question of this category:  43303
+object: 90.07  Number of question of this category:  43303
 super-category: 92.33  Number of question of this category:  2372
-NA: 48.44  number of q :  1519
+NA: 75.64  number of q :  1519
 POS200:
 Calculating Accuracy per category...
 Getting DATA..
@@ -193,7 +197,7 @@ spatial: 75.89  Number of question of this category:  39250
 Entities
 object: 89.73  Number of question of this category:  43303
 super-category: 92.66  Number of question of this category:  2372
-NA: 48.74  number of q :  1519
+NA: 76.10  number of q :  1519
 DLXMERT:
 Calculating Accuracy per category...
 Getting DATA..
@@ -211,7 +215,7 @@ spatial: 75.99  Number of question of this category:  39250
 Entities
 object: 88.43  Number of question of this category:  43303
 super-category: 90.60  Number of question of this category:  2372
-NA: 47.68  number of q :  1519
+NA: 74.46  number of q :  1519
 POSDLXMERT:
 Calculating Accuracy per category...
 Getting DATA..
@@ -229,34 +233,41 @@ spatial: 76.04  Number of question of this category:  39250
 Entities
 object: 88.71  Number of question of this category:  43303
 super-category: 90.77  Number of question of this category:  2372
-NA: 48.02  number of q :  1519
-EVALUATING IN MINI DATASET HISTORICALMODEL:  lxmert
-ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
-ACURACCY FOR TYPE  history :  0.17142857142857143 FORMULA:  6.0 / 35.0
-ACURACCY FOR TYPE  middle :  0.26515151515151514 FORMULA:  35.0 / 132.0
-ACURACCY FOR TYPE  x-axis :  0.26535626535626533 FORMULA:  108.0 / 407.0
-ACURACCY FOR TYPE  y-axis :  0.36538461538461536 FORMULA:  19.0 / 52.0
-MODEL:  dlxmert
-ACCURACY FOR THE MINI TEST SET IS :  0.1485623003194888
-ACURACCY FOR TYPE  history :  0.2571428571428571 FORMULA:  9.0 / 35.0
-ACURACCY FOR TYPE  middle :  0.12878787878787878 FORMULA:  17.0 / 132.0
-ACURACCY FOR TYPE  x-axis :  0.14250614250614252 FORMULA:  58.0 / 407.0
-ACURACCY FOR TYPE  y-axis :  0.17307692307692307 FORMULA:  9.0 / 52.0
-MODEL:  pos200
-ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
-ACURACCY FOR TYPE  history :  0.2 FORMULA:  7.0 / 35.0
-ACURACCY FOR TYPE  middle :  0.30303030303030304 FORMULA:  40.0 / 132.0
-ACURACCY FOR TYPE  x-axis :  0.25307125307125306 FORMULA:  103.0 / 407.0
-ACURACCY FOR TYPE  y-axis :  0.34615384615384615 FORMULA:  18.0 / 52.0
-MODEL:  evalpos
-ACCURACY FOR THE MINI TEST SET IS :  0.268370607028754
-ACURACCY FOR TYPE  history :  0.17142857142857143 FORMULA:  6.0 / 35.0
-ACURACCY FOR TYPE  middle :  0.26515151515151514 FORMULA:  35.0 / 132.0
-ACURACCY FOR TYPE  x-axis :  0.26535626535626533 FORMULA:  108.0 / 407.0
-ACURACCY FOR TYPE  y-axis :  0.36538461538461536 FORMULA:  19.0 / 52.0
-MODEL:  posdlxmert
-ACCURACY FOR THE MINI TEST SET IS :  0.12939297124600638
-ACURACCY FOR TYPE  history :  0.22857142857142856 FORMULA:  8.0 / 35.0
-ACURACCY FOR TYPE  middle :  0.13636363636363635 FORMULA:  18.0 / 132.0
-ACURACCY FOR TYPE  x-axis :  0.10810810810810811 FORMULA:  44.0 / 407.0
-ACURACCY FOR TYPE  y-axis :  0.21153846153846154 FORMULA:  11.0 / 52.0
+NA: 74.98  number of q :  1519
+OBJPOSDLXMERT:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8180970897137818
+Attributes
+color: 74.82  Number of question of this category:  15403
+shape: 74.09  Number of question of this category:  301
+size: 73.46  Number of question of this category:  1364
+texture: 78.02  Number of question of this category:  901
+action: 75.19  Number of question of this category:  7645
+spatial: 75.89  Number of question of this category:  39250
+Entities
+object: 88.66  Number of question of this category:  43303
+super-category: 90.81  Number of question of this category:  2372
+NA: 75.25  number of q :  1519
+MIXLL:
+Calculating Accuracy per category...
+Getting DATA..
+TOT:  99784
+Done getting DATA!
+Calculating...
+ACCURACY:  0.8182574360618937
+Attributes
+color: 74.54  Number of question of this category:  15403
+shape: 72.43  Number of question of this category:  301
+size: 73.61  Number of question of this category:  1364
+texture: 77.25  Number of question of this category:  901
+action: 75.58  Number of question of this category:  7645
+spatial: 76.00  Number of question of this category:  39250
+Entities
+object: 88.63  Number of question of this category:  43303
+super-category: 90.60  Number of question of this category:  2372
+NA: 75.44  number of q :  1519
+EVALUATING IN MINI DATASET HISTORICAL[5663, 9991, 15377, 21018, 21430, 26043, 28045, 28123, 29542, 30823, 33030, 38687, 39293, 39674, 40261, 40355, 41025, 41219, 47838, 42319, 43769, 44022, 45595, 49270, 51823, 52259, 52269, 52488, 54077, 58869, 59723, 64336, 64551, 64551, 65745, 66744, 66744, 68445, 70548, 71105, 71229, 71392, 73656, 74973, 75876, 77335, 77335, 77793, 78696, 79070, 79199]

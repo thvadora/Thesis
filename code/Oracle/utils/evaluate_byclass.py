@@ -60,6 +60,8 @@ def count_and_rate(game, q_max_miss=0):
                 attributes['color'].append(que)
             if '<shape>' in cat:
                 attributes['shape'].append(que)
+                print('spatial: ', que['question'])
+                exit(1)
             if '<size>' in cat:
                 attributes['size'].append(que)
             if '<texture>' in cat:
@@ -71,11 +73,14 @@ def count_and_rate(game, q_max_miss=0):
 
             if '<object>' in cat:
                 entities['object'].append(que)
+
             if '<super-category>' in cat:
                 entities['super-category'].append(que)
 
+
             if cat == '<NA>':
                 na_type.append(que)
+
     
     print('ACCURACY: ', ok/todo)
 
@@ -106,7 +111,7 @@ def count_and_rate(game, q_max_miss=0):
     correct = sum([q['ans'] == q['model_ans'] for q in na_type])
     acc = 0
     try:
-        acc = correct/qtype_count*100
+        acc = correct/len(na_type)*100
     except:
         pass
     print('NA: {:.2f}'.format(acc), ' number of q : ', len(na_type))

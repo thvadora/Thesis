@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
     l = args.models.split(',')
 
-    full = pd.read_csv('histdep.csv', keep_default_na=False, index_col=[0])
-
+    full = pd.read_csv('histdep2.csv', keep_default_na=False, index_col=[0])
+    full = full.loc[full["inverse answer without history"]=='1']
     for model in l:
         filename = model+'testpredictions.csv'
         data = pd.read_csv(os.path.join(os.getcwd(),filename), keep_default_na=False)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
                     typeoks[idx] += (row['GT Answer'].lower() == row[model].lower())
 
         print('MODEL: ', model)
-        print('ACCURACY FOR THE MINI TEST SET IS : ', ok/tot)
+        print('ACCURACY FOR THE MINI TEST SET IS : ', ok/tot, ' amount of q is: ', tot)
         for idx, t in enumerate(types):
             print('ACURACCY FOR TYPE ', t, ': ', typeoks[idx]/typetots[idx], 'FORMULA: ', typeoks[idx], '/', typetots[idx])
 

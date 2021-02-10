@@ -64,7 +64,7 @@ def calculate_accuracy_oracle_all(predictions, targets):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-data_dir", type=str, default="data", help='Data Directory')
-    parser.add_argument("-config", type=str, default="small", help='Config type [big, small]')
+    parser.add_argument("-config", type=str, default="big", help='Config type [big, small]')
     parser.add_argument("-img_feat", type=str, default="rss", help='Select "vgg" or "res" as image features')
     parser.add_argument("-exp_name", type=str, default="exp", help='Experiment Name')
     parser.add_argument("-bin_name", type=str, default='', help='Name of the trained model file')
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 
     num_locations = 0
     num_q = defaultdict(int)
-    selected_items = list(annotations.keys())
+    selected_items = ['64336', '64551', '68445', '74973']
 
     pos = 0
     last_game_id = None

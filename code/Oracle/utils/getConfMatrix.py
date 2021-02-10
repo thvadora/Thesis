@@ -57,8 +57,8 @@ if __name__ == "__main__":
     #print(matrix)
 
     df_cm = pd.DataFrame(matrix, 
-    index = [ 'No', 'Yes', 'N/A'],
-    columns = [ 'No', 'Yes', 'N/A'])
+    index = [ 'No', 'Si', 'N/A'],
+    columns = [ 'No', 'Si', 'N/A'])
 
     fig = plt.figure()
 
@@ -71,9 +71,9 @@ if __name__ == "__main__":
 
     res = sn.heatmap(df_cm, annot=True, vmin=0.0, vmax=matrix.max(), fmt='.0f', cmap=cmap)
 
-    plt.yticks([0.5,1.5,2.5], [ 'No', 'Yes', 'N/A'],va='center')
+    plt.yticks([0.5,1.5,2.5], [ 'No', 'Si', 'N/A'],va='center')
 
-    plt.title('Confusion Matrix')
+    #plt.title('Confusion Matrix')
 
     plt.savefig('confusion_matrix_of_'+args.data[:-4]+'.png', dpi=100, bbox_inches='tight' )
 

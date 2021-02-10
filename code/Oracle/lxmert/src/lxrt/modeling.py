@@ -30,6 +30,7 @@ from io import open
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, SmoothL1Loss
+from torch.autograd import Variable
 
 from .file_utils import cached_path
 
@@ -185,7 +186,6 @@ class BertConfig(object):
                  type_vocab_size=2,
                  initializer_range=0.02):
         """Constructs BertConfig.
-
         Args:
             vocab_size_or_config_json_file: Vocabulary size of `inputs_ids` in `BertModel`.
             hidden_size: Size of the encoder layers and the pooler layer.
@@ -450,8 +450,6 @@ class LXRTXLayer(nn.Module):
         self.lang_output = BertOutput(config)
         self.visn_inter = BertIntermediate(config)
         self.visn_output = BertOutput(config)
-        self.lang_att_map = list()
-        self.visn_att_map = list()
 
     def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
         # Cross Attention
@@ -714,7 +712,6 @@ class BertPreTrainedModel(nn.Module):
         """
         Instantiate a BertPreTrainedModel from a pre-trained model file or a pytorch state dict.
         Download and cache the pre-trained model file if needed.
-
         Params:
             pretrained_model_name_or_path: either:
                 - a str with the name of a pre-trained model to load selected in the list of:
@@ -1011,7 +1008,6 @@ class LXRTFeatureExtraction(BertPreTrainedModel):
     """
     def __init__(self, config, mode='lxr'):
         """
-
         :param config:
         :param mode:  Number of visual layers
         """
@@ -1031,4 +1027,3 @@ class LXRTFeatureExtraction(BertPreTrainedModel):
             return feat_seq, pooled_output
         elif 'l' in self.mode or 'r' in self.mode:
             return feat_seq
-

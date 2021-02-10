@@ -61,19 +61,12 @@ mixLL="mixLLtestpredictions.csv"
 histmixLL="historicalmixLLtestpredictions.csv"
 
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $lxmert -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $evalpos -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histevalpos -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $pos200 -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histpos200 -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $dlxmert -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histdlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $posdlxmert -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $poshistdlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $objposdlxmert -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $objposhistdlxmert -where $savein
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $mixLL -where $savein
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.getConfMatrix -data $histmixLL -where $savein
 
 printf "Confusion matrixs ready in root\n\n"
 
@@ -90,7 +83,7 @@ CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $dlxmert -nam
 printf "POSDLXMERT:\n"
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $posdlxmert -name LXMERT -is_historical False
 printf "OBJPOSDLXMERT:\n"
-CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $objposdlxmert -name LXMERT -is_historical False -onlyobj True
+CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $objposdlxmert -name LXMERT -is_historical False
 printf "MIXLL:\n"
 CUDA_VISIBLE_DEVICES=$avgpu $insta -m utils.evaluate_byclass -data $mixLL -name LXMERT -is_historical False
 
